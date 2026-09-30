@@ -75,7 +75,7 @@ plantilla; el zoom la agranda y arrastrarla con mouse/dedo sobre el canvas la de
 ## Arquitectura de archivos
 
 ```
-generador-miniaturas.html   pestañas + ambos paneles + canvas
+index.html                  pestañas + ambos paneles + canvas
 css/estilos.css             estilos (se agregan pestañas y campos condicionales)
 js/comun.js                 W/H, canvas, ctx, $, rng, gauss, pick, colores (hexToRgb, rgba,
                             lighten, darken, darkRgba), setLS, star4, descargar(nombre)
