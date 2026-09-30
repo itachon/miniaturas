@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Miniaturas Doradas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<nav class="tabs">
+  <button class="tab activa" data-seccion="cortos" type="button">Cortos / POV</button>
+  <button class="tab" data-seccion="largos" type="button">Videos largos</button>
+</nav>
+<div class="app">
+  <aside class="panel" data-panel="cortos">
+    <h1>✦ GENERADOR DE MINIATURAS</h1>
+
+    <label>Título (Enter = nueva línea)
+      <textarea id="title">VUELTA AL
+MUNDO</textarea>
+    </label>
+    <label>Subtítulo
+      <input type="text" id="subtitle" value="EPISODIO 1 | LA AVENTURA">
+    </label>
+
+    <div class="row">
+      <label>Fondo claro<input type="color" id="bg1" value="#1f4f9a"></label>
+      <label>Fondo oscuro<input type="color" id="bg2" value="#08122e"></label>
+      <label>Dorado<input type="color" id="gold" value="#f2c35b"></label>
+    </div>
+
+    <label>Ícono
+      <select id="icon">
+        <option value="globo">Globo terráqueo</option>
+        <option value="avion">Avión</option>
+        <option value="brujula">Brújula</option>
+        <option value="palmera">Palmera</option>
+        <option value="maleta">Maleta</option>
+        <option value="safari">Safari (jirafa y acacia)</option>
+        <option value="imagen">Mi imagen (PNG)</option>
+        <option value="none">Sin ícono</option>
+      </select>
+    </label>
+    <label>Subir imagen propia
+      <input type="file" id="file" accept="image/*">
+    </label>
+    <label class="check"><input type="checkbox" id="tint" checked> Teñir imagen de dorado</label>
+
+    <label>Tamaño del título <input type="range" id="titleSize" min="80" max="200" value="150"></label>
+    <label>Tamaño del ícono <input type="range" id="iconScale" min="50" max="140" value="100"></label>
+    <label>Opacidad del ícono <span class="val" id="iconAlphav">100%</span><input type="range" id="iconAlpha" min="0" max="100" value="100"></label>
+    <div class="row2">
+      <label>Posición X <span class="val" id="iconXv">79%</span><input type="range" id="iconX" min="0" max="100" value="79"></label>
+      <label>Posición Y <span class="val" id="iconYv">51%</span><input type="range" id="iconY" min="0" max="100" value="51"></label>
+    </div>
+    <button class="ghost" id="centerIcon" type="button">↺ Posición original del ícono</button>
+    <label>Partículas doradas <input type="range" id="particles" min="0" max="3000" value="1400"></label>
+    <label>Bokeh <input type="range" id="bokeh" min="0" max="150" value="70"></label>
+    <label>Estrellas <input type="range" id="stars" min="0" max="600" value="250"></label>
+
+    <div class="btns">
+      <button class="ghost" id="rand">🎲 Variar</button>
+      <button class="primary" data-descargar type="button">⬇ Descargar PNG</button>
+    </div>
+    <p class="hint">1280×720 (formato miniatura de YouTube). Para usar tu propio dibujo, sube un PNG con fondo transparente: con “teñir” activado queda como silueta dorada brillante.</p>
+  </aside>
+
+  <aside class="panel" data-panel="largos" hidden>
+    <h1>✦ VIDEOS LARGOS</h1>
+
+    <label>Plantilla
+      <select id="lPlantilla">
+        <option value="vlog">Vlog</option>
+        <option value="podcast">Podcast</option>
+        <option value="viaje">Reporte de viaje</option>
+      </select>
+    </label>
+    <label>Foto
+      <input type="file" id="lFoto" accept="image/*">
+    </label>
+    <div class="row2">
+      <label>Zoom <span class="val" id="lZoomv">100%</span><input type="range" id="lZoom" min="100" max="300" value="100"></label>
+      <label>Oscurecer <span class="val" id="lOscurov">30%</span><input type="range" id="lOscuro" min="0" max="80" value="30"></label>
+    </div>
+    <button class="ghost" id="lReencuadrar" type="button">↺ Reencuadrar foto</button>
+
+    <label>Título (Enter = nueva línea)
+      <textarea id="lTitulo">MI PRIMER DÍA
+EN TOKIO</textarea>
+    </label>
+    <label>Subtítulo
+      <input type="text" id="lSubtitulo" value="VLOG DE VIAJE">
+    </label>
+    <label data-plantilla="podcast" hidden>Invitado
+      <input type="text" id="lInvitado" value="CON ANA PÉREZ">
+    </label>
+    <label data-plantilla="podcast" hidden>N.º de episodio
+      <input type="text" id="lEpisodio" value="12" maxlength="6">
+    </label>
+    <label data-plantilla="viaje" hidden>Destino / país
+      <input type="text" id="lDestino" value="JAPÓN">
+    </label>
+    <label data-plantilla="viaje" hidden>Fecha o duración
+      <input type="text" id="lFecha" value="7 DÍAS">
+    </label>
+
+    <label>Dorado<input type="color" id="lGold" value="#f2c35b"></label>
+
+    <div class="btns">
+      <button class="ghost" id="lRand" type="button">🎲 Variar</button>
+      <button class="primary" data-descargar type="button">⬇ Descargar PNG</button>
+    </div>
+    <p class="hint">Arrastra la foto sobre la miniatura para encuadrarla. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
+  </aside>
+
+  <main class="stage">
+    <canvas id="cv"></canvas>
+  </main>
+</div>
+
+<script src="js/comun.js"></script>
+<script src="js/cortos.js"></script>
+<script src="js/largos.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

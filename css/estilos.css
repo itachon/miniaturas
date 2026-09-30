@@ -1,0 +1,35 @@
+:root{
+  --bg:#0b1020; --panel:#131a2e; --line:#243052;
+  --text:#e8ecf7; --muted:#8a96b5; --gold:#f3c969;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Montserrat,system-ui,sans-serif}
+.app{display:grid;grid-template-columns:330px 1fr;gap:20px;padding:20px;max-width:1500px;margin:auto}
+@media(max-width:900px){.app{grid-template-columns:1fr;padding:16px}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;
+       display:flex;flex-direction:column;gap:12px;align-self:start}
+h1{font-size:16px;margin:0 0 4px;color:var(--gold);letter-spacing:.05em}
+label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+input[type=text],textarea,select,input[type=file]{
+  background:#0d1426;border:1px solid var(--line);color:var(--text);
+  border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;width:100%}
+textarea{resize:vertical;min-height:64px}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-radius:8px;background:#0d1426;padding:2px}
+input[type=range]{width:100%;accent-color:var(--gold)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.val{color:var(--gold);font-weight:700}
+canvas.drag{cursor:grab} canvas.dragging{cursor:grabbing}
+.check{flex-direction:row;align-items:center;gap:8px;color:var(--text)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{font:inherit;font-weight:700;font-size:13px;border:0;border-radius:10px;padding:11px;cursor:pointer}
+.primary{background:linear-gradient(180deg,#ffe29a,#d9a33a);color:#2a1a00}
+.ghost{background:#1c2542;color:var(--text);border:1px solid var(--line)}
+.stage{display:flex;flex-direction:column;gap:10px}
+canvas{width:100%;height:auto;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);display:block}
+.hint{font-size:12px;color:var(--muted);line-height:1.5}
+[hidden]{display:none !important}
+.tabs{display:flex;gap:8px;max-width:1500px;margin:auto;padding:20px 20px 0}
+@media(max-width:900px){.tabs{padding:16px 16px 0}}
+.tab{background:#1c2542;color:var(--muted);border:1px solid var(--line)}
+.tab.activa{background:linear-gradient(180deg,#ffe29a,#d9a33a);color:#2a1a00;border-color:transparent}

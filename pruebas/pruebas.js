@@ -1,0 +1,259 @@
+/* Pruebas del generador. Se ejecutan en Chrome headless: node pruebas/correr.mjs */
+const PRUEBAS = [];
+const prueba = (nombre, fn) => PRUEBAS.push({ nombre, fn });
+function afirmar(cond, msg){ if(!cond) throw new Error(msg); }
+const $w = (w, id) => w.document.getElementById(id);
+const dibujar = w => (w.App ? w.App.render() : w.render());
+function pixel(w,x,y){ return $w(w,'cv').getContext('2d').getImageData(x,y,1,1).data; }
+
+// hash FNV-1a del PNG del lienzo
+function hashLienzo(w){
+  const d = $w(w,'cv').toDataURL('image/png');
+  let h = 0x811c9dc5;
+  for(let i=0;i<d.length;i++){ h ^= d.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h>>>0).toString(16);
+}
+
+// foto sintética: roja con una franja azul
+function fotoDePrueba(w, ancho=1600, alto=900){
+  const c = w.document.createElement('canvas'); c.width = ancho; c.height = alto;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ff0000'; x.fillRect(0,0,ancho,alto);
+  x.fillStyle = '#0033ff'; x.fillRect(0,alto*0.45,ancho,alto*0.1);
+  return c;
+}
+
+// "Cortos / POV" con valores por defecto (se fija en la Tarea 1, paso 5)
+const LINEA_BASE_CORTOS = '647c2457';
+
+prueba('Cortos por defecto coincide con la línea base', w=>{
+  if(w.App && w.App.mostrar) w.App.mostrar('cortos');
+  dibujar(w);
+  const h = hashLienzo(w);
+  afirmar(LINEA_BASE_CORTOS !== null, 'línea base sin fijar; hash actual = ' + h);
+  afirmar(h === LINEA_BASE_CORTOS, `hash ${h} ≠ línea base ${LINEA_BASE_CORTOS}`);
+});
+
+prueba('Cortos: nombre de descarga', w=>{
+  afirmar(w.Cortos && w.Cortos.nombreArchivo() === 'miniatura-corto.png', 'Cortos.nombreArchivo() incorrecto o inexistente');
+});
+
+prueba('Cortos: arrastrar el ícono mueve los sliders', w=>{
+  if(w.App.mostrar) w.App.mostrar('cortos');
+  w.App.render();
+  const C = w.Cortos, x0 = $w(w,'iconX').value;
+  afirmar(!C.puedeArrastrar({x:40, y:40}), 'una esquina no debería ser arrastrable');
+  afirmar(C.onPointerDown({x:1280*0.79, y:720*0.51}), 'no toma el ícono');
+  C.onPointerMove({x:1280*0.5, y:720*0.51}); C.onPointerUp();
+  const x1 = $w(w,'iconX').value;
+  $w(w,'iconX').value = x0; w.App.render();
+  afirmar(x1 === '50', 'iconX = ' + x1);
+});
+
+prueba('Pestaña "Videos largos" muestra su panel y oculta el de cortos', w=>{
+  w.document.querySelector('.tab[data-seccion="largos"]').click();
+  afirmar(!w.document.querySelector('[data-panel="largos"]').hidden, 'panel largos oculto');
+  afirmar(w.document.querySelector('[data-panel="cortos"]').hidden, 'panel cortos visible');
+});
+
+prueba('Vlog sin foto dibuja algo distinto de cortos', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='vlog';
+  w.Largos.ponerFoto(null); w.App.render();
+  afirmar(hashLienzo(w) !== LINEA_BASE_CORTOS, 'el lienzo no cambió');
+});
+
+prueba('Sin foto no se puede arrastrar', w=>{
+  w.App.mostrar('largos'); w.Largos.ponerFoto(null); w.App.render();
+  afirmar(w.Largos.onPointerDown({x:640, y:360}) === false, 'inició arrastre sin foto');
+});
+
+prueba('La foto cubre el área con zoom y arrastre extremo (vlog)', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='vlog';
+  try{
+    for(const [fw,fh] of [[1600,900],[300,900]]){
+      w.Largos.ponerFoto(fotoDePrueba(w,fw,fh)); $w(w,'lZoom').value=200; w.App.render();
+      afirmar(w.Largos.onPointerDown({x:640, y:360}), 'no inicia arrastre con foto');
+      w.Largos.onPointerMove({x:5640, y:5360}); w.Largos.onPointerUp(); w.App.render();
+      for(const [x,y] of [[60,60],[60,660],[1220,660],[1220,360]])
+        afirmar(pixel(w,x,y)[3] === 255, `hueco en (${x},${y}) con foto ${fw}×${fh}`);
+    }
+  } finally { $w(w,'lZoom').value=100; w.Largos.ponerFoto(null); }
+});
+
+prueba('Títulos largos se reducen para caber', w=>{
+  const largo='SUPERCALIFRAGILISTICOESPIALIDOSO';
+  const s=w.Largos.ajustar([largo],900,150,500);
+  const c=$w(w,'cv').getContext('2d');
+  c.save(); c.font=`900 ${s}px Montserrat, sans-serif`;
+  if('letterSpacing' in c) c.letterSpacing=(s*0.01)+'px';
+  const ancho=c.measureText(largo).width; c.restore();
+  afirmar(ancho <= 501, `ancho ${ancho} > 500`);
+});
+
+prueba('Vlog: nombre de descarga', w=>{
+  $w(w,'lPlantilla').value='vlog';
+  afirmar(w.Largos.nombreArchivo() === 'miniatura-vlog.png', w.Largos.nombreArchivo());
+});
+
+prueba('Cortos sigue igual después de visitar Videos largos', w=>{
+  w.App.mostrar('cortos');
+  afirmar(hashLienzo(w) === LINEA_BASE_CORTOS, 'hash ' + hashLienzo(w));
+});
+
+prueba('Podcast: muestra sus campos', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='podcast'; w.App.render();
+  afirmar(!$w(w,'lInvitado').closest('label').hidden, 'invitado oculto');
+  afirmar(!$w(w,'lEpisodio').closest('label').hidden, 'episodio oculto');
+  $w(w,'lPlantilla').value='vlog'; w.App.render();
+  afirmar($w(w,'lInvitado').closest('label').hidden, 'invitado visible en vlog');
+});
+
+prueba('Podcast: etiqueta sin número dice solo PODCAST', w=>{
+  afirmar(w.Largos.etiquetaPodcast('') === 'PODCAST', w.Largos.etiquetaPodcast(''));
+  afirmar(w.Largos.etiquetaPodcast('12') === 'PODCAST · EP 12', w.Largos.etiquetaPodcast('12'));
+});
+
+prueba('Podcast: campos vacíos y foto dibujan sin errores', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='podcast';
+  const ids=['lInvitado','lEpisodio','lSubtitulo','lTitulo'], antes=ids.map(i=>$w(w,i).value);
+  try{
+    ids.forEach(i=>{ $w(w,i).value=''; });
+    w.Largos.ponerFoto(fotoDePrueba(w)); w.App.render();
+    w.Largos.ponerFoto(null); w.App.render();
+  } finally { ids.forEach((i,k)=>{ $w(w,i).value=antes[k]; }); }
+});
+
+prueba('Podcast: solo se arrastra sobre la foto', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='podcast';
+  w.Largos.ponerFoto(fotoDePrueba(w)); w.App.render();
+  try{
+    afirmar(w.Largos.onPointerDown({x:100, y:360}) === false, 'arrastra sobre el panel');
+    afirmar(w.Largos.onPointerDown({x:1000, y:360}) === true, 'no arrastra sobre la foto');
+    w.Largos.onPointerUp();
+  } finally { w.Largos.ponerFoto(null); }
+});
+
+prueba('Podcast: nombre de descarga', w=>{
+  $w(w,'lPlantilla').value='podcast';
+  afirmar(w.Largos.nombreArchivo() === 'miniatura-podcast.png', w.Largos.nombreArchivo());
+  $w(w,'lPlantilla').value='vlog';
+});
+
+prueba('Viaje: muestra sus campos y oculta los de podcast', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='viaje'; w.App.render();
+  afirmar(!$w(w,'lDestino').closest('label').hidden, 'destino oculto');
+  afirmar(!$w(w,'lFecha').closest('label').hidden, 'fecha oculta');
+  afirmar($w(w,'lInvitado').closest('label').hidden, 'invitado visible en viaje');
+  $w(w,'lPlantilla').value='podcast'; w.App.render();
+  afirmar($w(w,'lDestino').closest('label').hidden, 'destino visible en podcast');
+});
+
+prueba('Viaje: campos vacíos, destino largo y foto dibujan sin errores', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='viaje';
+  const ids=['lDestino','lFecha','lSubtitulo','lTitulo'], antes=ids.map(i=>$w(w,i).value);
+  try{
+    ids.forEach(i=>{ $w(w,i).value=''; });
+    w.Largos.ponerFoto(fotoDePrueba(w,300,900)); w.App.render();
+    $w(w,'lDestino').value='REPÚBLICA DEMOCRÁTICA DEL CONGO Y ALREDEDORES'; w.App.render();
+  } finally { ids.forEach((i,k)=>{ $w(w,i).value=antes[k]; }); w.Largos.ponerFoto(null); }
+});
+
+prueba('Viaje: nombre de descarga', w=>{
+  $w(w,'lPlantilla').value='viaje';
+  afirmar(w.Largos.nombreArchivo() === 'miniatura-viaje.png', w.Largos.nombreArchivo());
+  $w(w,'lPlantilla').value='vlog';
+});
+
+/* ---------- correcciones de la revisión final ---------- */
+// cuenta píxeles casi blancos (texto) en un rectángulo del lienzo
+function blancosEn(w,x,y,ancho,alto){
+  const d=$w(w,'cv').getContext('2d').getImageData(x,y,ancho,alto).data;
+  let n=0; for(let i=0;i<d.length;i+=4) if(d[i]>230 && d[i+1]>230 && d[i+2]>230) n++;
+  return n;
+}
+
+prueba('Viaje: un título de 3 líneas no cruza la ruta', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='viaje';
+  const antes=$w(w,'lTitulo').value;
+  try{
+    w.Largos.ponerFoto(null);
+    $w(w,'lTitulo').value='UNO DOS TRES CUATRO CINCO SEIS\nSIETE OCHO NUEVE DIEZ ONCE\nDOCE TRECE CATORCE QUINCE';
+    w.App.render();
+    const n=blancosEn(w,810,310,370,160);
+    afirmar(n===0, `${n} píxeles de texto bajo la ruta (x≥810)`);
+  } finally { $w(w,'lTitulo').value=antes; }
+});
+
+prueba('Insignia larga se reduce hasta su ancho máximo', w=>{
+  const ancho=w.Largos.insignia('DEL 12 DE ENERO AL 30 DE FEBRERO DE 2026 - RUTA COMPLETA',80,56,26,{gold:'#f2c35b'},653);
+  afirmar(ancho<=653.5, 'ancho '+ancho);
+  w.App.render();
+});
+
+prueba('Subir un archivo que no es imagen avisa al usuario', async w=>{
+  const alertaOriginal=w.alert; let mensaje=null;
+  w.alert=m=>{ mensaje=m; };
+  try{
+    w.leerImagen(new w.Blob(['hola'],{type:'text/plain'}), ()=>{ mensaje='cargó'; });
+    for(let i=0;i<50 && mensaje===null;i++) await new Promise(r=>setTimeout(r,20));
+    afirmar(mensaje && mensaje!=='cargó', 'sin aviso: '+mensaje);
+  } finally { w.alert=alertaOriginal; }
+});
+
+prueba('La foto se escala con suavizado de alta calidad', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='vlog';
+  const c=$w(w,'cv').getContext('2d'), original=c.drawImage, foto=fotoDePrueba(w,4000,2250);
+  let calidad=null;
+  c.drawImage=function(img,...r){ if(img===foto) calidad=this.imageSmoothingQuality; return original.call(this,img,...r); };
+  try{ w.Largos.ponerFoto(foto); w.App.render(); }
+  finally { delete c.drawImage; w.Largos.ponerFoto(null); }
+  afirmar(calidad==='high', 'calidad = '+calidad);
+});
+
+// foto sintética más realista: cielo de atardecer, sol y montañas
+function fotoPaisaje(w){
+  const c=w.document.createElement('canvas'); c.width=1600; c.height=1000;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,1000);
+  g.addColorStop(0,'#2b4c8c'); g.addColorStop(0.55,'#f0a35e'); g.addColorStop(1,'#5a3b2e');
+  x.fillStyle=g; x.fillRect(0,0,1600,1000);
+  x.fillStyle='#ffe3a0'; x.beginPath(); x.arc(1100,560,90,0,Math.PI*2); x.fill();
+  x.fillStyle='#2a2238'; x.beginPath(); x.moveTo(0,1000); x.lineTo(0,700); x.lineTo(300,480);
+  x.lineTo(620,720); x.lineTo(900,520); x.lineTo(1250,760); x.lineTo(1600,600); x.lineTo(1600,1000); x.fill();
+  return c;
+}
+
+async function capturas(w){
+  const res={}, url=()=>$w(w,'cv').toDataURL('image/png');
+  w.App.mostrar('cortos'); res.cortos=url();
+  w.App.mostrar('largos');
+  $w(w,'lPlantilla').value='vlog'; w.Largos.ponerFoto(null); w.App.render(); res['vlog-sin-foto']=url();
+  w.Largos.ponerFoto(fotoPaisaje(w));
+  for(const p of ['vlog','podcast','viaje']){ $w(w,'lPlantilla').value=p; w.App.render(); res[p]=url(); }
+  w.Largos.ponerFoto(null);
+  return res;
+}
+
+/* ---------- ejecución ---------- */
+async function correr(){
+  const fr = $w(window,'app');
+  if(fr.contentWindow.location.href === 'about:blank' || fr.contentDocument.readyState !== 'complete')
+    await new Promise(r => fr.addEventListener('load', r, { once:true }));
+  const w = fr.contentWindow;
+  const errores = [];
+  w.addEventListener('error', e => errores.push(e.message));
+  await Promise.all(['600 40px Montserrat','800 100px Montserrat','900 100px Montserrat']
+    .map(f => w.document.fonts.load(f).catch(()=>{})));
+
+  const lineas = []; let fallos = 0;
+  for(const t of PRUEBAS){
+    try{ await t.fn(w); lineas.push('OK    ' + t.nombre); }
+    catch(e){ fallos++; lineas.push('FALLA ' + t.nombre + ' — ' + e.message); }
+  }
+  if(errores.length){ fallos++; lineas.push('FALLA errores en la app — ' + errores.join(' | ')); }
+  if(location.search.includes('capturas') && typeof capturas === 'function')
+    $w(window,'capturas').textContent = JSON.stringify(await capturas(w));
+  lineas.push(fallos ? `${fallos} FALLA(S)` : 'TODO OK');
+  $w(window,'resultado').textContent = lineas.join('\n');
+}
+correr().catch(e => { $w(window,'resultado').textContent = 'ERROR ' + e.stack + '\n1 FALLA(S)'; });
