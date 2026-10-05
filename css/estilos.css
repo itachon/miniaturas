@@ -28,7 +28,7 @@ button{font:inherit;font-weight:700;font-size:13px;border:0;border-radius:10px;p
 .stage{display:flex;flex-direction:column;gap:10px}
 canvas{width:100%;height:auto;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);display:block}
 .grupo,.grupo-cuerpo{display:flex;flex-direction:column;gap:12px}
-.subtabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:#0d1426;
+.subtabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:#0d1426;
          border:1px solid var(--line);border-radius:10px;padding:4px}
 .subtab{background:none;color:var(--muted);font-size:12px;padding:8px 4px;border-radius:7px}
 .subtab.activa{background:#1c2542;color:var(--gold)}

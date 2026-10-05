@@ -119,52 +119,64 @@ MUNDO</textarea>
         <option value="viaje">Reporte de viaje</option>
       </select>
     </label>
-    <label>Foto
-      <input type="file" id="lFoto" accept="image/*">
-    </label>
-    <div class="row2">
-      <label>Zoom <span class="val" id="lZoomv">100%</span><input type="range" id="lZoom" min="100" max="300" value="100"></label>
-      <label>Oscurecer <span class="val" id="lOscurov">30%</span><input type="range" id="lOscuro" min="0" max="80" value="30"></label>
-    </div>
-    <div class="row2">
-      <label>Posición X <span class="val" id="lFotoXv">50%</span><input type="range" id="lFotoX" min="0" max="100" value="50"></label>
-      <label>Posición Y <span class="val" id="lFotoYv">50%</span><input type="range" id="lFotoY" min="0" max="100" value="50"></label>
-    </div>
-    <button class="ghost" id="lReencuadrar" type="button">↺ Reencuadrar foto</button>
+    <nav class="subtabs">
+      <button class="subtab activa" data-grupo="fondo" type="button">Fondo</button>
+      <button class="subtab" data-grupo="texto" type="button">Texto</button>
+      <button class="subtab" data-grupo="fotos" type="button">Fotos</button>
+    </nav>
 
-    <label>Título (Enter = nueva línea)
-      <textarea id="lTitulo">MI PRIMER DÍA
+    <section class="grupo" data-grupo="fondo">
+      <label>Foto de fondo
+        <input type="file" id="lFoto" accept="image/*">
+      </label>
+      <div class="row2">
+        <label>Zoom <span class="val" id="lZoomv">100%</span><input type="range" id="lZoom" min="100" max="300" value="100"></label>
+        <label>Oscurecer <span class="val" id="lOscurov">30%</span><input type="range" id="lOscuro" min="0" max="80" value="30"></label>
+      </div>
+      <div class="row2">
+        <label>Posición X <span class="val" id="lFotoXv">50%</span><input type="range" id="lFotoX" min="0" max="100" value="50"></label>
+        <label>Posición Y <span class="val" id="lFotoYv">50%</span><input type="range" id="lFotoY" min="0" max="100" value="50"></label>
+      </div>
+      <button class="ghost" id="lReencuadrar" type="button">↺ Reencuadrar foto</button>
+    </section>
+
+    <section class="grupo" data-grupo="texto" hidden>
+      <label>Título (Enter = nueva línea)
+        <textarea id="lTitulo">MI PRIMER DÍA
 EN TOKIO</textarea>
-    </label>
-    <label>Subtítulo
-      <input type="text" id="lSubtitulo" value="VLOG DE VIAJE">
-    </label>
-    <button class="ghost" id="lTextoReset" type="button">↺ Posición original del título y subtítulo</button>
-    <label data-plantilla="podcast" hidden>Invitado
-      <input type="text" id="lInvitado" value="CON ANA PÉREZ">
-    </label>
-    <label data-plantilla="podcast" hidden>N.º de episodio
-      <input type="text" id="lEpisodio" value="12" maxlength="6">
-    </label>
-    <label data-plantilla="viaje" hidden>Destino / país
-      <input type="text" id="lDestino" value="JAPÓN">
-    </label>
-    <label data-plantilla="viaje" hidden>Fecha o duración
-      <input type="text" id="lFecha" value="7 DÍAS">
-    </label>
+      </label>
+      <label>Subtítulo
+        <input type="text" id="lSubtitulo" value="VLOG DE VIAJE">
+      </label>
+      <label data-plantilla="podcast" hidden>Invitado
+        <input type="text" id="lInvitado" value="CON ANA PÉREZ">
+      </label>
+      <label data-plantilla="podcast" hidden>N.º de episodio
+        <input type="text" id="lEpisodio" value="12" maxlength="6">
+      </label>
+      <label data-plantilla="viaje" hidden>Destino / país
+        <input type="text" id="lDestino" value="JAPÓN">
+      </label>
+      <label data-plantilla="viaje" hidden>Fecha o duración
+        <input type="text" id="lFecha" value="7 DÍAS">
+      </label>
+      <label>Dorado<input type="color" id="lGold" value="#f2c35b"></label>
+      <button class="ghost" id="lTextoReset" type="button">↺ Posición original del título y subtítulo</button>
+    </section>
 
-    <label>Fotos extra (puedes elegir varias)
-      <input type="file" id="lFotos" accept="image/*" multiple>
-    </label>
-    <div class="fotos-lista" id="lFotosLista" hidden></div>
-
-    <label>Dorado<input type="color" id="lGold" value="#f2c35b"></label>
+    <section class="grupo" data-grupo="fotos" hidden>
+      <label>Agregar fotos (puedes elegir varias)
+        <input type="file" id="lFotos" accept="image/*" multiple>
+      </label>
+      <div class="fotos-lista" id="lFotosLista" hidden></div>
+      <p class="hint">Arrastra cada foto para moverla. <b>Ctrl + rueda del mouse</b> sobre una foto la agranda o achica.</p>
+    </section>
 
     <div class="btns">
       <button class="ghost" id="lRand" type="button">🎲 Variar</button>
       <button class="primary" data-descargar type="button">⬇ Descargar PNG</button>
     </div>
-    <p class="hint">Arrastra el título, el subtítulo y las fotos extra para moverlos, y la foto para encuadrarla. Ctrl + rueda del mouse sobre una foto extra la agranda o achica. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
+    <p class="hint">Arrastra el título, el subtítulo y las fotos para moverlos, y la foto de fondo para encuadrarla. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
   </aside>
 
   <main class="stage">

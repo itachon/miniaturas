@@ -256,7 +256,8 @@ prueba('Cortos: el tamaño del título cambia en todo su recorrido', w=>{
 });
 
 prueba('Cortos: las pestañas del panel muestran un grupo a la vez', w=>{
-  const d=w.document, visibles=()=>[...d.querySelectorAll('.grupo[data-grupo]')].filter(g=>!g.hidden).map(g=>g.dataset.grupo);
+  const d=w.document.querySelector('[data-panel="cortos"]');
+  const visibles=()=>[...d.querySelectorAll('.grupo[data-grupo]')].filter(g=>!g.hidden).map(g=>g.dataset.grupo);
   try{
     d.querySelector('.subtab[data-grupo="icono"]').click();
     afirmar(visibles().join()==='icono', 'visibles: '+visibles());
@@ -526,6 +527,27 @@ prueba('Largos: las fotos extra quedan bajo el texto y sobre la foto de fondo', 
     afirmar(f.w>w0, 'Ctrl + rueda no agranda en Videos largos');
     afirmar(w.document.querySelectorAll('#lFotosLista .foto-item').length===1, 'lista de Videos largos');
   } finally { F.vaciar(); $w(w,'lTextoReset').click(); L.ponerFoto(null); w.App.render(); }
+});
+
+prueba('Largos: pestañas Fondo, Texto y Fotos, independientes de las de Cortos', w=>{
+  w.App.mostrar('largos');
+  const doc=w.document, P=doc.querySelector('[data-panel="largos"]'), C=doc.querySelector('[data-panel="cortos"]');
+  const visibles=panel=>[...panel.querySelectorAll('.grupo[data-grupo]')].filter(g=>!g.hidden).map(g=>g.dataset.grupo).join();
+  const pestanas=[...P.querySelectorAll('.subtab')].map(b=>b.dataset.grupo).join();
+  afirmar(pestanas==='fondo,texto,fotos', 'pestañas: '+pestanas);
+  afirmar(visibles(P)==='fondo', 'al abrir se ve: '+visibles(P));
+  const enGrupo=(id,g)=>$w(w,id).closest('.grupo').dataset.grupo===g;
+  afirmar(['lFoto','lZoom','lOscuro','lFotoX','lFotoY','lReencuadrar'].every(id=>enGrupo(id,'fondo')), 'controles de fondo fuera de su pestaña');
+  afirmar(['lTitulo','lSubtitulo','lInvitado','lDestino','lGold','lTextoReset'].every(id=>enGrupo(id,'texto')), 'controles de texto fuera de su pestaña');
+  afirmar(['lFotos','lFotosLista'].every(id=>enGrupo(id,'fotos')), 'controles de fotos fuera de su pestaña');
+  const cortosAntes=visibles(C);
+  try{
+    P.querySelector('.subtab[data-grupo="fotos"]').click();
+    afirmar(visibles(P)==='fotos', 'tras clic en Fotos se ve: '+visibles(P));
+    afirmar(visibles(C)===cortosAntes, 'cambiar de pestaña en Videos largos cambió las de Cortos');
+    P.querySelector('.subtab[data-grupo="texto"]').click();
+    afirmar(visibles(P)==='texto', 'tras clic en Texto se ve: '+visibles(P));
+  } finally { P.querySelector('.subtab[data-grupo="fondo"]').click(); w.App.mostrar('cortos'); }
 });
 
 // foto sintética más realista: cielo de atardecer, sol y montañas

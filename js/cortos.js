@@ -466,13 +466,6 @@ var Cortos = (() => {
   // Ctrl + rueda: escala la foto bajo el cursor
   function onWheel(p,deltaY){ return fotos.escalar(p,deltaY); }
 
-  /* ---------- pestañas del panel ---------- */
-  function mostrarGrupo(nombre){
-    document.querySelectorAll('.subtab').forEach(b=>b.classList.toggle('activa',b.dataset.grupo===nombre));
-    document.querySelectorAll('.grupo[data-grupo]').forEach(g=>{ g.hidden = g.dataset.grupo!==nombre; });
-  }
-  document.querySelectorAll('.subtab').forEach(b=>b.addEventListener('click',()=>mostrarGrupo(b.dataset.grupo)));
-
   /* ---------- controles propios ---------- */
   $('file').addEventListener('change',e=>{
     const f=e.target.files[0]; if(!f) return;

@@ -17,6 +17,14 @@ var App = (() => {
   }
   document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>mostrar(t.dataset.seccion)));
 
+  /* pestañas internas de cada panel: muestran un grupo de controles a la vez */
+  document.querySelectorAll('.panel').forEach(panel=>{
+    panel.querySelectorAll('.subtab').forEach(b=>b.addEventListener('click',()=>{
+      panel.querySelectorAll('.subtab').forEach(x=>x.classList.toggle('activa',x===b));
+      panel.querySelectorAll('.grupo[data-grupo]').forEach(g=>{ g.hidden = g.dataset.grupo!==b.dataset.grupo; });
+    }));
+  });
+
   document.addEventListener('input', e=>{ if(e.target.type!=='file') programar(); });
 
   /* arrastrar con el mouse o el dedo */
