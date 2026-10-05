@@ -14,9 +14,9 @@ var Cortos = (() => {
       title: $('title').value, subtitle: $('subtitle').value,
       bg1: $('bg1').value, bg2: $('bg2').value, gold: $('gold').value, bgOscuro: +$('bgOscuro').value/100,
       icon: $('icon').value, tint: $('tint').checked,
-      titleSize: +$('titleSize').value, iconScale: +$('iconScale').value/100, iconAlpha: +$('iconAlpha').value/100,
+      titleSize: +$('titleSize').value, iconScale: +$('iconScale').value/100, iconAlpha: +$('iconAlpha').value/100, iconGlow: +$('iconGlow').value/100,
       iconX: +$('iconX').value/100, iconY: +$('iconY').value/100,
-      particles: +$('particles').value, bokeh: +$('bokeh').value, stars: +$('stars').value
+      efectos: $('efectos').checked, particles: +$('particles').value, bokeh: +$('bokeh').value, stars: +$('stars').value
     };
   }
 
@@ -46,14 +46,17 @@ var Cortos = (() => {
     }
 
     // brillo cálido en el horizonte
-    g = ctx.createLinearGradient(0,H*0.6,0,H);
-    g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,rgba(o.gold,0.07));
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    if(o.efectos){
+      g = ctx.createLinearGradient(0,H*0.6,0,H);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,rgba(o.gold,0.07));
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    }
 
     // viñeta
     g = ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,W*0.75);
     g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,15,0.55)');
     ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    if(!o.efectos) return;
 
     // estrellas
     for(let i=0;i<o.stars;i++){
@@ -310,13 +313,17 @@ var Cortos = (() => {
     const k=0.88*o.iconScale, w=600*k, h=700*k;
     const cx=W*o.iconX, cy=H*o.iconY, x=cx-w/2, y=cy-h/2;
     iconBox={x,y,w,h};
-    // resplandor exterior
-    ctx.save(); ctx.globalCompositeOperation='lighter';
-    ctx.filter='blur(30px)'; ctx.globalAlpha=0.7*o.iconAlpha; ctx.drawImage(ic,x,y,w,h);
-    ctx.filter='blur(9px)';  ctx.globalAlpha=0.55*o.iconAlpha; ctx.drawImage(ic,x,y,w,h);
-    ctx.restore();
+    // resplandor exterior y sombra: escalan con iconGlow (0 = sin brillo, 1 = normal, 2 = doble)
+    const gl=o.iconGlow;
+    if(gl>0){
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      ctx.filter=`blur(${30*gl}px)`; ctx.globalAlpha=Math.min(1,0.7*gl)*o.iconAlpha; ctx.drawImage(ic,x,y,w,h);
+      ctx.filter=`blur(${9*gl}px)`;  ctx.globalAlpha=Math.min(1,0.55*gl)*o.iconAlpha; ctx.drawImage(ic,x,y,w,h);
+      ctx.restore();
+    }
     // ícono nítido
-    ctx.save(); ctx.globalAlpha=o.iconAlpha; ctx.shadowColor=rgba(o.gold,0.9); ctx.shadowBlur=25;
+    ctx.save(); ctx.globalAlpha=o.iconAlpha;
+    if(gl>0){ ctx.shadowColor=rgba(o.gold,Math.min(1,0.9*gl)); ctx.shadowBlur=25*gl; }
     ctx.drawImage(ic,x,y,w,h); ctx.restore();
     return {cx,cy,k};
   }
@@ -410,17 +417,18 @@ var Cortos = (() => {
     $('iconXv').textContent=$('iconX').value+'%';
     $('iconYv').textContent=$('iconY').value+'%';
     $('iconAlphav').textContent=$('iconAlpha').value+'%';
+    $('iconGlowv').textContent=$('iconGlow').value+'%';
     $('titleSizev').textContent=$('titleSize').value;
     $('bgOscurov').textContent=$('bgOscuro').value+'%';
     $('bgQuitar').hidden=!fondo;
     $('iconAjustes').hidden=o.icon==='none';
+    $('efectosAjustes').hidden=!o.efectos;
     iconBox=null; cajas={};
     ctx.save(); ctx.clearRect(0,0,W,H);
     drawBackground(R,o);
-    drawBokeh(R,o);
+    if(o.efectos) drawBokeh(R,o);
     const p=placeIcon(o);
-    drawParticles(R,o,p);
-    drawSparkles(R,o,p);
+    if(o.efectos){ drawParticles(R,o,p); drawSparkles(R,o,p); }
     drawText(o);
     drawFrame();
     ctx.restore();
@@ -459,6 +467,13 @@ var Cortos = (() => {
     $('iconY').value=clamp((p.y-drag.dy)/H*100);
   }
   function onPointerUp(){ drag=null; }
+
+  /* ---------- pestañas del panel ---------- */
+  function mostrarGrupo(nombre){
+    document.querySelectorAll('.subtab').forEach(b=>b.classList.toggle('activa',b.dataset.grupo===nombre));
+    document.querySelectorAll('.grupo[data-grupo]').forEach(g=>{ g.hidden = g.dataset.grupo!==nombre; });
+  }
+  document.querySelectorAll('.subtab').forEach(b=>b.addEventListener('click',()=>mostrarGrupo(b.dataset.grupo)));
 
   /* ---------- controles propios ---------- */
   $('file').addEventListener('change',e=>{

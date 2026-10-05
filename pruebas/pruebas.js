@@ -255,6 +255,52 @@ prueba('Cortos: el tamaño del título cambia en todo su recorrido', w=>{
   afirmar(hashes.size===3, 'tamaños distintos dibujan igual');
 });
 
+prueba('Cortos: las pestañas del panel muestran un grupo a la vez', w=>{
+  const d=w.document, visibles=()=>[...d.querySelectorAll('.grupo[data-grupo]')].filter(g=>!g.hidden).map(g=>g.dataset.grupo);
+  try{
+    d.querySelector('.subtab[data-grupo="icono"]').click();
+    afirmar(visibles().join()==='icono', 'visibles: '+visibles());
+    afirmar(!$w(w,'icon').closest('.grupo').hidden, 'selector de ícono oculto');
+    afirmar(d.querySelector('.subtab.activa').dataset.grupo==='icono', 'pestaña activa incorrecta');
+  } finally { d.querySelector('.subtab[data-grupo="texto"]').click(); }
+  afirmar(visibles().join()==='texto', 'visibles: '+visibles());
+});
+
+prueba('Cortos: sin efectos no se dibuja ningún destello ni partícula', w=>{
+  w.App.mostrar('cortos');
+  const chk=$w(w,'efectos'), ids=['icon','title','subtitle'], antes=ids.map(i=>$w(w,i).value);
+  try{
+    // sin ícono ni texto, lo que quede brillante solo pueden ser efectos
+    $w(w,'icon').value='none'; $w(w,'title').value=''; $w(w,'subtitle').value='';
+    chk.checked=false; w.App.render();
+    afirmar($w(w,'efectosAjustes').hidden, 'controles de efectos visibles');
+    const n=blancosEn(w,0,0,1280,720);
+    afirmar(n===0, n+' píxeles brillantes sin efectos');
+    chk.checked=true; w.App.render();
+    afirmar(blancosEn(w,0,0,1280,720)>0, 'con efectos no se dibuja nada brillante');
+  } finally { chk.checked=true; ids.forEach((i,k)=>{ $w(w,i).value=antes[k]; }); w.App.render(); }
+  afirmar(hashLienzo(w)===LINEA_BASE_CORTOS, 'no vuelve a la línea base');
+});
+
+prueba('Cortos: brillo del ícono en 0 no deja resplandor alrededor', w=>{
+  w.App.mostrar('cortos');
+  const ids=['icon','title','subtitle','iconGlow'], antes=ids.map(i=>$w(w,i).value);
+  // punto junto al globo, fuera de su forma (afectado solo por el resplandor)
+  const junto=()=>[...pixel(w,782,323)].join();
+  try{
+    $w(w,'efectos').checked=false; $w(w,'title').value=''; $w(w,'subtitle').value='';
+    $w(w,'icon').value='none'; w.App.render(); const fondo=junto();
+    $w(w,'icon').value='globo';
+    $w(w,'iconGlow').value=0;   w.App.render(); const sin=junto();
+    $w(w,'iconGlow').value=100; w.App.render(); const normal=junto();
+    $w(w,'iconGlow').value=200; w.App.render(); const doble=junto();
+    afirmar(sin===fondo, `con brillo 0 hay resplandor: ${sin} ≠ ${fondo}`);
+    afirmar(normal!==fondo, 'con brillo 100 no hay resplandor');
+    afirmar(doble!==normal, 'brillo 200 igual a 100');
+  } finally { $w(w,'efectos').checked=true; ids.forEach((i,k)=>{ $w(w,i).value=antes[k]; }); w.App.render(); }
+  afirmar(hashLienzo(w)===LINEA_BASE_CORTOS, 'no vuelve a la línea base');
+});
+
 prueba('Cortos: "Sin ícono" oculta los ajustes del ícono', w=>{
   w.App.mostrar('cortos');
   const sel=$w(w,'icon'), antes=sel.value;

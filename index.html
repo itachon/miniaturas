@@ -16,8 +16,14 @@
   <aside class="panel" data-panel="cortos">
     <h1>✦ GENERADOR DE MINIATURAS</h1>
 
-    <section class="grupo">
-      <h2>Texto</h2>
+    <nav class="subtabs">
+      <button class="subtab activa" data-grupo="texto" type="button">Texto</button>
+      <button class="subtab" data-grupo="fondo" type="button">Fondo</button>
+      <button class="subtab" data-grupo="icono" type="button">Ícono</button>
+      <button class="subtab" data-grupo="efectos" type="button">Efectos</button>
+    </nav>
+
+    <section class="grupo" data-grupo="texto">
       <label>Título (Enter = nueva línea)
         <textarea id="title">VUELTA AL
 MUNDO</textarea>
@@ -29,8 +35,7 @@ MUNDO</textarea>
       <button class="ghost" id="centerTitle" type="button">↺ Posición original del título y subtítulo</button>
     </section>
 
-    <section class="grupo">
-      <h2>Colores y fondo</h2>
+    <section class="grupo" data-grupo="fondo" hidden>
       <div class="row">
         <label>Fondo claro<input type="color" id="bg1" value="#1f4f9a"></label>
         <label>Fondo oscuro<input type="color" id="bg2" value="#08122e"></label>
@@ -43,8 +48,7 @@ MUNDO</textarea>
       <button class="ghost" id="bgQuitar" type="button" hidden>✕ Quitar imagen de fondo</button>
     </section>
 
-    <section class="grupo">
-      <h2>Ícono</h2>
+    <section class="grupo" data-grupo="icono" hidden>
       <label>Tipo
         <select id="icon">
           <option value="globo">Globo terráqueo</option>
@@ -64,6 +68,7 @@ MUNDO</textarea>
         <label class="check"><input type="checkbox" id="tint" checked> Teñir imagen de dorado</label>
         <label>Tamaño del ícono <input type="range" id="iconScale" min="50" max="140" value="100"></label>
         <label>Opacidad del ícono <span class="val" id="iconAlphav">100%</span><input type="range" id="iconAlpha" min="0" max="100" value="100"></label>
+        <label>Brillo y sombra del ícono <span class="val" id="iconGlowv">100%</span><input type="range" id="iconGlow" min="0" max="200" value="100"></label>
         <div class="row2">
           <label>Posición X <span class="val" id="iconXv">79%</span><input type="range" id="iconX" min="0" max="100" value="79"></label>
           <label>Posición Y <span class="val" id="iconYv">51%</span><input type="range" id="iconY" min="0" max="100" value="51"></label>
@@ -72,11 +77,13 @@ MUNDO</textarea>
       </div>
     </section>
 
-    <section class="grupo">
-      <h2>Efectos</h2>
-      <label>Partículas doradas <input type="range" id="particles" min="0" max="3000" value="1400"></label>
-      <label>Bokeh <input type="range" id="bokeh" min="0" max="150" value="70"></label>
-      <label>Estrellas <input type="range" id="stars" min="0" max="600" value="250"></label>
+    <section class="grupo" data-grupo="efectos" hidden>
+      <label class="check"><input type="checkbox" id="efectos" checked> Mostrar efectos (partículas, bokeh, estrellas y destellos)</label>
+      <div class="grupo-cuerpo" id="efectosAjustes">
+        <label>Partículas doradas <input type="range" id="particles" min="0" max="3000" value="1400"></label>
+        <label>Bokeh <input type="range" id="bokeh" min="0" max="150" value="70"></label>
+        <label>Estrellas <input type="range" id="stars" min="0" max="600" value="250"></label>
+      </div>
     </section>
 
     <div class="btns">
