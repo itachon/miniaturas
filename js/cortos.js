@@ -3,7 +3,7 @@ var Cortos = (() => {
   let seed = 20260929;
   let userImg = null;
   let fondo = null;
-  let encuadre = {dx:0, dy:0};   // desplazamiento de la imagen de fondo, en px del lienzo
+  let geoFondo = null;           // último encuadre dibujado de la imagen de fondo
   let iconBox = null;
   let desp = {titulo:{dx:0, dy:0}, subtitulo:{dx:0, dy:0}};   // desplazamiento de cada texto, en px del lienzo
   let cajas = {};                // caja de cada texto, sin desplazar
@@ -12,7 +12,7 @@ var Cortos = (() => {
   function opts(){
     return {
       title: $('title').value, subtitle: $('subtitle').value,
-      bg1: $('bg1').value, bg2: $('bg2').value, gold: $('gold').value, bgOscuro: +$('bgOscuro').value/100,
+      bg1: $('bg1').value, bg2: $('bg2').value, gold: $('gold').value, bgOscuro: +$('bgOscuro').value/100, bgX: +$('bgX').value/100, bgY: +$('bgY').value/100,
       icon: $('icon').value, tint: $('tint').checked,
       titleSize: +$('titleSize').value, iconScale: +$('iconScale').value/100, iconAlpha: +$('iconAlpha').value/100, iconGlow: +$('iconGlow').value/100,
       iconX: +$('iconX').value/100, iconY: +$('iconY').value/100,
@@ -21,21 +21,11 @@ var Cortos = (() => {
   }
 
   /* ---------- fondo ---------- */
-  // "cover" + desplazamiento limitado para no dejar huecos
-  function geometriaFondo(){
-    const s=Math.max(W/fondo.width, H/fondo.height);
-    const w=fondo.width*s, h=fondo.height*s;
-    const mx=(w-W)/2, my=(h-H)/2;
-    encuadre.dx=Math.max(-mx, Math.min(mx, encuadre.dx));
-    encuadre.dy=Math.max(-my, Math.min(my, encuadre.dy));
-    return { x:(W-w)/2+encuadre.dx, y:(H-h)/2+encuadre.dy, w, h };
-  }
-
   function drawBackground(R,o){
     ctx.fillStyle = o.bg2; ctx.fillRect(0,0,W,H);
     let g;
     if(fondo){
-      const f=geometriaFondo();
+      const f=geoFondo=encuadrar(fondo,{x:0,y:0,w:W,h:H},1,o.bgX,o.bgY);
       ctx.imageSmoothingQuality='high';
       ctx.drawImage(fondo,f.x,f.y,f.w,f.h);
       ctx.fillStyle = rgba(o.bg2,o.bgOscuro); ctx.fillRect(0,0,W,H);
@@ -420,7 +410,9 @@ var Cortos = (() => {
     $('iconGlowv').textContent=$('iconGlow').value+'%';
     $('titleSizev').textContent=$('titleSize').value;
     $('bgOscurov').textContent=$('bgOscuro').value+'%';
-    $('bgQuitar').hidden=!fondo;
+    $('bgXv').textContent=$('bgX').value+'%';
+    $('bgYv').textContent=$('bgY').value+'%';
+    $('bgAjustes').hidden=!fondo;
     $('iconAjustes').hidden=o.icon==='none';
     $('efectosAjustes').hidden=!o.efectos;
     iconBox=null; cajas={};
@@ -447,13 +439,13 @@ var Cortos = (() => {
     const t=textoEn(p);
     if(t) drag={que:t, dx:p.x-desp[t].dx, dy:p.y-desp[t].dy};
     else if(dentro(iconBox,p)) drag={que:'icono', dx:p.x-W*$('iconX').value/100, dy:p.y-H*$('iconY').value/100};
-    else if(fondo) drag={que:'fondo', dx:p.x-encuadre.dx, dy:p.y-encuadre.dy};
+    else if(fondo && geoFondo) drag={que:'fondo', e:iniciarEncuadre(p,geoFondo,'bgX','bgY')};
     else return false;
     return true;
   }
   function onPointerMove(p){
     if(!drag) return;
-    if(drag.que==='fondo'){ encuadre.dx=p.x-drag.dx; encuadre.dy=p.y-drag.dy; return; }
+    if(drag.que==='fondo'){ moverEncuadre(drag.e,p); return; }
     if(drag.que in desp){
       // el texto no puede salir del lienzo
       const b=cajas[drag.que], d=desp[drag.que], lim=(v,a,z)=>Math.max(a,Math.min(z,v));
@@ -480,11 +472,12 @@ var Cortos = (() => {
     const f=e.target.files[0]; if(!f) return;
     leerImagen(f,img=>{ userImg=img; $('icon').value='imagen'; App.render(); });
   });
-  function ponerFondo(img){ fondo=img; encuadre={dx:0, dy:0}; }
+  function ponerFondo(img){ fondo=img; geoFondo=null; $('bgX').value=50; $('bgY').value=50; }
   $('bgFile').addEventListener('change',e=>{
     const f=e.target.files[0]; if(!f) return;
     leerImagen(f,img=>{ ponerFondo(img); App.render(); });
   });
+  $('bgCentrar').addEventListener('click',()=>{ $('bgX').value=50; $('bgY').value=50; App.render(); });
   $('bgQuitar').addEventListener('click',()=>{ ponerFondo(null); $('bgFile').value=''; App.render(); });
   $('centerTitle').addEventListener('click',()=>{ desp={titulo:{dx:0, dy:0}, subtitulo:{dx:0, dy:0}}; App.render(); });
   $('centerIcon').addEventListener('click',()=>{ $('iconX').value=79; $('iconY').value=51; App.render(); });

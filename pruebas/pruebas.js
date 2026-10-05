@@ -72,7 +72,7 @@ prueba('La foto cubre el área con zoom y arrastre extremo (vlog)', w=>{
   try{
     for(const [fw,fh] of [[1600,900],[300,900]]){
       w.Largos.ponerFoto(fotoDePrueba(w,fw,fh)); $w(w,'lZoom').value=200; w.App.render();
-      afirmar(w.Largos.onPointerDown({x:640, y:360}), 'no inicia arrastre con foto');
+      afirmar(w.Largos.onPointerDown({x:1100, y:150}), 'no inicia arrastre con foto');
       w.Largos.onPointerMove({x:5640, y:5360}); w.Largos.onPointerUp(); w.App.render();
       for(const [x,y] of [[60,60],[60,660],[1220,660],[1220,360]])
         afirmar(pixel(w,x,y)[3] === 255, `hueco en (${x},${y}) con foto ${fw}×${fh}`);
@@ -218,7 +218,7 @@ prueba('Cortos: la imagen de fondo cubre todo y se encuadra arrastrando', w=>{
     for(const [fw,fh] of [[1600,900],[300,900]]){
       C.ponerFondo(fotoDePrueba(w,fw,fh)); w.App.render();
       afirmar(hashLienzo(w) !== LINEA_BASE_CORTOS, 'el fondo no cambió el lienzo');
-      afirmar(!$w(w,'bgQuitar').hidden, 'botón quitar oculto con fondo');
+      afirmar(!$w(w,'bgAjustes').hidden, 'ajustes de fondo ocultos con imagen');
       afirmar(C.onPointerDown({x:60, y:60}), 'no arrastra el fondo fuera del ícono');
       C.onPointerMove({x:5060, y:5060}); C.onPointerUp(); w.App.render();
       for(const [x,y] of [[40,40],[40,680],[1240,680],[1240,40]])
@@ -242,7 +242,7 @@ prueba('Cortos: quitar el fondo vuelve a la línea base', w=>{
   w.App.mostrar('cortos');
   w.Cortos.ponerFondo(fotoDePrueba(w)); w.App.render();
   $w(w,'bgQuitar').click();
-  afirmar($w(w,'bgQuitar').hidden, 'botón quitar visible sin fondo');
+  afirmar($w(w,'bgAjustes').hidden, 'ajustes de fondo visibles sin imagen');
   afirmar(hashLienzo(w) === LINEA_BASE_CORTOS, 'hash '+hashLienzo(w));
 });
 
@@ -355,6 +355,83 @@ prueba('Cortos: con fondo, el título se arrastra antes que el fondo', w=>{
     $w(w,'centerTitle').click();
     afirmar(hashLienzo(w) === antes, 'se movió el fondo en vez del título');
   } finally { C.ponerFondo(null); w.App.render(); }
+});
+
+/* ---------- encuadre con sliders X/Y y textos movibles en Videos largos ---------- */
+prueba('Cortos: arrastrar la imagen de fondo mueve sus sliders X/Y', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos;
+  afirmar($w(w,'bgAjustes').hidden, 'ajustes de fondo visibles sin imagen');
+  try{
+    C.ponerFondo(fotoDePrueba(w,1600,1200)); w.App.render();   // más alta que el lienzo: se mueve en Y
+    afirmar(!$w(w,'bgAjustes').hidden, 'ajustes de fondo ocultos con imagen');
+    const antes=hashLienzo(w);
+    afirmar(C.onPointerDown({x:60, y:300}), 'no toma el fondo');
+    C.onPointerMove({x:60, y:340}); C.onPointerUp(); w.App.render();
+    afirmar(+$w(w,'bgY').value > 50, 'bgY = '+$w(w,'bgY').value);
+    afirmar($w(w,'bgX').value === '50', 'bgX = '+$w(w,'bgX').value);
+    afirmar(hashLienzo(w) !== antes, 'el fondo no se movió');
+    $w(w,'bgCentrar').click();
+    afirmar(hashLienzo(w) === antes, 'centrar no vuelve al encuadre inicial');
+  } finally { C.ponerFondo(null); w.App.render(); }
+});
+
+prueba('Largos: los sliders X/Y mueven la foto sin dejar huecos', w=>{
+  w.App.mostrar('largos');
+  try{
+    for(const pl of ['vlog','podcast','viaje']){
+      $w(w,'lPlantilla').value=pl;
+      w.Largos.ponerFoto(fotoDePrueba(w,1600,1600)); $w(w,'lZoom').value=150; w.App.render();
+      const centro=hashLienzo(w);
+      for(const [x,y] of [[0,0],[100,100]]){
+        $w(w,'lFotoX').value=x; $w(w,'lFotoY').value=y; w.App.render();
+        afirmar(hashLienzo(w) !== centro, `${pl}: X/Y ${x} no mueve la foto`);
+        for(const [px,py] of [[1250,30],[1250,690]])
+          afirmar(pixel(w,px,py)[3] === 255, `${pl}: hueco en (${px},${py}) con X/Y ${x}`);
+      }
+    }
+  } finally { $w(w,'lZoom').value=100; w.Largos.ponerFoto(null); $w(w,'lPlantilla').value='vlog'; w.App.render(); }
+});
+
+prueba('Largos: arrastrar la foto mueve sus sliders X/Y', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='vlog';
+  try{
+    w.Largos.ponerFoto(fotoDePrueba(w,1600,900)); $w(w,'lZoom').value=200; w.App.render();
+    afirmar(w.Largos.onPointerDown({x:1100, y:150}), 'no toma la foto');
+    w.Largos.onPointerMove({x:1000, y:200}); w.Largos.onPointerUp();
+    afirmar(+$w(w,'lFotoX').value < 50 && +$w(w,'lFotoY').value > 50, `X=${$w(w,'lFotoX').value} Y=${$w(w,'lFotoY').value}`);
+    $w(w,'lReencuadrar').click();
+    afirmar($w(w,'lFotoX').value === '50' && $w(w,'lZoom').value === '100', 'reencuadrar no centra');
+  } finally { $w(w,'lZoom').value=100; w.Largos.ponerFoto(null); w.App.render(); }
+});
+
+prueba('Largos: título y subtítulo se arrastran por separado en cada plantilla', w=>{
+  w.App.mostrar('largos');
+  const L=w.Largos, centro=b=>({x:b.x+Math.min(b.w/2,40), y:b.y+b.h/2});
+  try{
+    for(const pl of ['vlog','podcast','viaje']){
+      $w(w,'lPlantilla').value=pl; L.ponerFoto(fotoDePrueba(w)); w.App.render();
+      const inicial=hashLienzo(w);
+      for(const k of ['titulo','subtitulo']){
+        const b=L.cajaTexto(k), otra=L.cajaTexto(k==='titulo'?'subtitulo':'titulo');
+        afirmar(b, `${pl}: sin caja de ${k}`);
+        const c=centro(b);
+        afirmar(L.onPointerDown(c), `${pl}: no toma ${k}`);
+        L.onPointerMove({x:c.x+30, y:c.y-20}); L.onPointerUp(); w.App.render();
+        const b2=L.cajaTexto(k), otra2=L.cajaTexto(k==='titulo'?'subtitulo':'titulo');
+        afirmar(Math.abs(b2.x-b.x-30)<0.5 && Math.abs(b2.y-b.y+20)<0.5, `${pl}: ${k} no se movió 30,-20`);
+        afirmar(otra2.x===otra.x && otra2.y===otra.y, `${pl}: mover ${k} movió el otro texto`);
+        afirmar($w(w,'lFotoX').value === '50', `${pl}: mover ${k} movió la foto`);
+      }
+      // no sale del lienzo
+      const c=centro(L.cajaTexto('titulo'));
+      L.onPointerDown(c); L.onPointerMove({x:c.x-9999, y:c.y+9999}); L.onPointerUp(); w.App.render();
+      const b=L.cajaTexto('titulo');
+      afirmar(b.x>=-0.5 && b.y+b.h<=720.5, `${pl}: el título salió del lienzo`);
+      $w(w,'lTextoReset').click();
+      afirmar(hashLienzo(w) === inicial, `${pl}: reiniciar no vuelve a la posición original`);
+    }
+  } finally { $w(w,'lTextoReset').click(); L.ponerFoto(null); $w(w,'lPlantilla').value='vlog'; w.App.render(); }
 });
 
 // foto sintética más realista: cielo de atardecer, sol y montañas

@@ -44,8 +44,15 @@ MUNDO</textarea>
       <label>Imagen de fondo
         <input type="file" id="bgFile" accept="image/*">
       </label>
-      <label>Oscurecer fondo <span class="val" id="bgOscurov">40%</span><input type="range" id="bgOscuro" min="0" max="90" value="40"></label>
-      <button class="ghost" id="bgQuitar" type="button" hidden>✕ Quitar imagen de fondo</button>
+      <div class="grupo-cuerpo" id="bgAjustes" hidden>
+        <label>Oscurecer fondo <span class="val" id="bgOscurov">40%</span><input type="range" id="bgOscuro" min="0" max="90" value="40"></label>
+        <div class="row2">
+          <label>Posición X <span class="val" id="bgXv">50%</span><input type="range" id="bgX" min="0" max="100" value="50"></label>
+          <label>Posición Y <span class="val" id="bgYv">50%</span><input type="range" id="bgY" min="0" max="100" value="50"></label>
+        </div>
+        <button class="ghost" id="bgCentrar" type="button">↺ Centrar imagen de fondo</button>
+        <button class="ghost" id="bgQuitar" type="button">✕ Quitar imagen de fondo</button>
+      </div>
     </section>
 
     <section class="grupo" data-grupo="icono" hidden>
@@ -110,6 +117,10 @@ MUNDO</textarea>
       <label>Zoom <span class="val" id="lZoomv">100%</span><input type="range" id="lZoom" min="100" max="300" value="100"></label>
       <label>Oscurecer <span class="val" id="lOscurov">30%</span><input type="range" id="lOscuro" min="0" max="80" value="30"></label>
     </div>
+    <div class="row2">
+      <label>Posición X <span class="val" id="lFotoXv">50%</span><input type="range" id="lFotoX" min="0" max="100" value="50"></label>
+      <label>Posición Y <span class="val" id="lFotoYv">50%</span><input type="range" id="lFotoY" min="0" max="100" value="50"></label>
+    </div>
     <button class="ghost" id="lReencuadrar" type="button">↺ Reencuadrar foto</button>
 
     <label>Título (Enter = nueva línea)
@@ -119,6 +130,7 @@ EN TOKIO</textarea>
     <label>Subtítulo
       <input type="text" id="lSubtitulo" value="VLOG DE VIAJE">
     </label>
+    <button class="ghost" id="lTextoReset" type="button">↺ Posición original del título y subtítulo</button>
     <label data-plantilla="podcast" hidden>Invitado
       <input type="text" id="lInvitado" value="CON ANA PÉREZ">
     </label>
@@ -138,7 +150,7 @@ EN TOKIO</textarea>
       <button class="ghost" id="lRand" type="button">🎲 Variar</button>
       <button class="primary" data-descargar type="button">⬇ Descargar PNG</button>
     </div>
-    <p class="hint">Arrastra la foto sobre la miniatura para encuadrarla. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
+    <p class="hint">Arrastra el título y el subtítulo para moverlos, y la foto para encuadrarla. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
   </aside>
 
   <main class="stage">

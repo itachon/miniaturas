@@ -2,15 +2,18 @@
 var Largos = (() => {
   let seed = 20260930;
   let foto = null;
-  let encuadre = {dx:0, dy:0};   // desplazamiento de la foto, en px del lienzo
+  let geoFoto = null;            // último encuadre dibujado de la foto
   let area = null;               // área de la foto en la plantilla dibujada
   let arrastre = null;
+  let desp = {};                 // desplazamiento de cada texto, por plantilla: desp.vlog.titulo = {dx,dy}
+  let cajas = {};                // caja de cada texto movible, sin desplazar
   const NOCHE = '#08122e', NOCHE2 = '#1f4f9a';
 
   function opts(){
     return {
       plantilla: $('lPlantilla').value,
       zoom: +$('lZoom').value/100, oscuro: +$('lOscuro').value/100,
+      fotoX: +$('lFotoX').value/100, fotoY: +$('lFotoY').value/100,
       titulo: $('lTitulo').value, subtitulo: $('lSubtitulo').value,
       invitado: $('lInvitado') ? $('lInvitado').value : '',
       episodio: $('lEpisodio') ? $('lEpisodio').value.trim() : '',
@@ -28,21 +31,11 @@ var Largos = (() => {
     viaje:   {x:0, y:0, w:W, h:H}
   };
 
-  // "cover" + zoom + desplazamiento limitado para no dejar huecos
-  function geometria(a, zoom){
-    const s=Math.max(a.w/foto.width, a.h/foto.height)*zoom;
-    const w=foto.width*s, h=foto.height*s;
-    const mx=(w-a.w)/2, my=(h-a.h)/2;
-    encuadre.dx=Math.max(-mx, Math.min(mx, encuadre.dx));
-    encuadre.dy=Math.max(-my, Math.min(my, encuadre.dy));
-    return { x:a.x+(a.w-w)/2+encuadre.dx, y:a.y+(a.h-h)/2+encuadre.dy, w, h };
-  }
-
   function dibujarFoto(a,o){
     ctx.save();
     ctx.beginPath(); ctx.rect(a.x,a.y,a.w,a.h); ctx.clip();
     if(foto){
-      const g=geometria(a,o.zoom);
+      const g=geoFoto=encuadrar(foto,a,o.zoom,o.fotoX,o.fotoY);
       ctx.imageSmoothingQuality='high';   // las fotos de celular se reducen mucho
       ctx.drawImage(foto,g.x,g.y,g.w,g.h);
       ctx.fillStyle=`rgba(0,0,10,${o.oscuro})`; ctx.fillRect(a.x,a.y,a.w,a.h);
@@ -62,11 +55,28 @@ var Largos = (() => {
 
   // tamaño para que la línea más ancha quepa en maxW
   function ajustar(lineas,peso,size,maxW,ls=0.01){
-    ctx.save(); ctx.font=`${peso} ${size}px Montserrat, sans-serif`; setLS(ctx,size*ls);
-    const ancho=Math.max(1,...lineas.map(l=>ctx.measureText(l).width));
-    ctx.restore();
+    const ancho=Math.max(1,medirTexto(lineas,peso,size,ls));
     return ancho>maxW ? size*maxW/ancho : size;
   }
+
+  /* ---------- textos movibles ---------- */
+  function despDe(k){
+    const p=$('lPlantilla').value;
+    desp[p]=desp[p]||{};
+    return desp[p][k]=desp[p][k]||{dx:0, dy:0};
+  }
+  // dibuja un texto desplazado según lo que el usuario lo haya arrastrado
+  function movible(k,caja,dibujar){
+    cajas[k]=caja;
+    const d=despDe(k);
+    ctx.save(); ctx.translate(d.dx,d.dy); dibujar(); ctx.restore();
+  }
+  // cajas aproximadas de tituloDorado y textoPlano
+  function cajaDorado(lineas,x,yBase,size){
+    const y=yBase-(lineas.length-1)*size*1.02-size*0.8;
+    return { x, y, w:medirTexto(lineas,900,size,0.01), h:yBase+size*0.25-y };
+  }
+  const cajaPlano=(t,x,y,size,peso,ls=0.04)=>({ x, y:y-size*0.85, w:medirTexto([t],peso,size,ls), h:size*1.1 });
 
   // título blanco→dorado con contorno y brillo; yBase = línea base de la última línea.
   // Devuelve el borde superior aproximado del bloque.
@@ -135,16 +145,22 @@ var Largos = (() => {
 
     const x=80, sub=o.subtitulo.trim().toUpperCase();
     const yBase= sub ? H-140 : H-80;
-    let top=yBase;
+    // barra de acento sobre el título
+    const barra=top=>{
+      ctx.save(); ctx.shadowColor=rgba(o.gold,0.9); ctx.shadowBlur=18;
+      ctx.fillStyle=o.gold; ctx.fillRect(x+4,top-30,140,10); ctx.restore();
+    };
     const lineas=lineasDe(o.titulo);
     if(lineas.length){
       const size=ajustar(lineas,900,Math.min(150,330/lineas.length),W*0.62);
-      top=tituloDorado(lineas,x,yBase,size,o);
+      const caja=cajaDorado(lineas,x,yBase,size);
+      caja.y-=30; caja.h+=30;   // incluye la barra
+      movible('titulo',caja,()=>barra(tituloDorado(lineas,x,yBase,size,o)));
+    } else barra(yBase);
+    if(sub){
+      const s=ajustar([sub],700,38,W*0.62,0.04);
+      movible('subtitulo',cajaPlano(sub,x+4,H-72,s,700),()=>textoPlano(sub,x+4,H-72,s,700,lighten(o.gold,0.2)));
     }
-    // barra de acento
-    ctx.save(); ctx.shadowColor=rgba(o.gold,0.9); ctx.shadowBlur=18;
-    ctx.fillStyle=o.gold; ctx.fillRect(x+4,top-30,140,10); ctx.restore();
-    if(sub) textoPlano(sub,x+4,H-72,ajustar([sub],700,38,W*0.62,0.04),700,lighten(o.gold,0.2));
     chispas(R,o,5,{x:W*0.55, y:H*0.08, w:W*0.4, h:H*0.3});
   }
 
@@ -181,14 +197,17 @@ var Largos = (() => {
     let y=190;
     const lineas=lineasDe(o.titulo);
     if(lineas.length){
-      const size=ajustar(lineas,900,Math.min(96,300/lineas.length),maxW);
-      y=190+size*0.85+(lineas.length-1)*size*1.02;
-      tituloDorado(lineas,x,y,size,o);
+      const size=ajustar(lineas,900,Math.min(96,300/lineas.length),maxW), yT=190+size*0.85+(lineas.length-1)*size*1.02;
+      movible('titulo',cajaDorado(lineas,x,yT,size),()=>tituloDorado(lineas,x,yT,size,o));
+      y=yT;
     }
     const inv=o.invitado.trim().toUpperCase();
     if(inv){ y+=64; textoPlano(inv,x,y,ajustar([inv],800,40,maxW,0.04),800,lighten(o.gold,0.15)); }
     const sub=o.subtitulo.trim().toUpperCase();
-    if(sub){ y+=52; textoPlano(sub,x,y,ajustar([sub],600,26,maxW,0.04),600,'rgba(232,236,247,0.8)'); }
+    if(sub){
+      y+=52; const s=ajustar([sub],600,26,maxW,0.04), yS=y;
+      movible('subtitulo',cajaPlano(sub,x,yS,s,600),()=>textoPlano(sub,x,yS,s,600,'rgba(232,236,247,0.8)'));
+    }
     chispas(R,o,4,{x:40, y:H*0.72, w:W*0.38, h:H*0.2});
   }
 
@@ -237,11 +256,19 @@ var Largos = (() => {
     // título y subtítulo encima del destino, de abajo hacia arriba
     let y=top-18;
     const sub=o.subtitulo.trim().toUpperCase();
-    if(sub){ textoPlano(sub,x,y,ajustar([sub],600,28,maxTexto,0.04),600,'rgba(232,236,247,0.85)'); y-=48; }
+    if(sub){
+      const s=ajustar([sub],600,28,maxTexto,0.04), yS=y;
+      movible('subtitulo',cajaPlano(sub,x,yS,s,600),()=>textoPlano(sub,x,yS,s,600,'rgba(232,236,247,0.85)'));
+      y-=48;
+    }
     const lineas=lineasDe(o.titulo);
     if(lineas.length){
-      const s=ajustar(lineas,800,Math.min(56,150/lineas.length),maxTexto,0.04);
-      for(let i=lineas.length-1;i>=0;i--){ textoPlano(lineas[i],x,y,s,800,'#ffffff'); y-=s*1.1; }
+      const s=ajustar(lineas,800,Math.min(56,150/lineas.length),maxTexto,0.04), yB=y;
+      const top=yB-(lineas.length-1)*s*1.1-s*0.85;
+      const caja={ x, y:top, w:medirTexto(lineas,800,s,0.04), h:yB+s*0.25-top };
+      movible('titulo',caja,()=>{
+        lineas.forEach((l,i)=>textoPlano(l,x,yB-(lineas.length-1-i)*s*1.1,s,800,'#ffffff'));
+      });
     }
     chispas(R,o,4,{x:W*0.6, y:H*0.05, w:W*0.35, h:H*0.25});
   }
@@ -253,6 +280,9 @@ var Largos = (() => {
     const o=opts(), R=rng(seed);
     $('lZoomv').textContent=$('lZoom').value+'%';
     $('lOscurov').textContent=$('lOscuro').value+'%';
+    $('lFotoXv').textContent=$('lFotoX').value+'%';
+    $('lFotoYv').textContent=$('lFotoY').value+'%';
+    cajas={};
     document.querySelectorAll('[data-plantilla]').forEach(el=>{ el.hidden = el.dataset.plantilla!==o.plantilla; });
     ctx.save(); ctx.clearRect(0,0,W,H);
     PLANTILLAS[o.plantilla](R,o);
@@ -260,31 +290,50 @@ var Largos = (() => {
     ctx.restore();
   }
 
-  /* ---------- arrastrar la foto ---------- */
-  function puedeArrastrar(p){
-    return !!foto && !!area && p.x>=area.x && p.x<=area.x+area.w && p.y>=area.y && p.y<=area.y+area.h;
+  /* ---------- arrastrar el subtítulo, el título o la foto (en ese orden) ---------- */
+  const dentro=(b,p)=>!!b && p.x>=b.x && p.x<=b.x+b.w && p.y>=b.y && p.y<=b.y+b.h;
+  function textoEn(p){
+    return ['subtitulo','titulo'].find(k=>{
+      const b=cajas[k], d=despDe(k);
+      return b && dentro({...b, x:b.x+d.dx, y:b.y+d.dy},p);
+    });
   }
+  const sobreFoto=p=>!!foto && !!geoFoto && dentro(area,p);
+  function puedeArrastrar(p){ return !!textoEn(p) || sobreFoto(p); }
   function onPointerDown(p){
-    if(!puedeArrastrar(p)) return false;
-    arrastre={x:p.x-encuadre.dx, y:p.y-encuadre.dy};
+    const t=textoEn(p);
+    if(t){ const d=despDe(t); arrastre={texto:t, dx:p.x-d.dx, dy:p.y-d.dy}; }
+    else if(sobreFoto(p)) arrastre={e:iniciarEncuadre(p,geoFoto,'lFotoX','lFotoY')};
+    else return false;
     return true;
   }
-  function onPointerMove(p){ if(arrastre){ encuadre.dx=p.x-arrastre.x; encuadre.dy=p.y-arrastre.y; } }
+  function onPointerMove(p){
+    if(!arrastre) return;
+    if(arrastre.e){ moverEncuadre(arrastre.e,p); return; }
+    // el texto no puede salir del lienzo
+    const b=cajas[arrastre.texto], d=despDe(arrastre.texto), lim=(v,a,z)=>Math.max(a,Math.min(z,v));
+    if(!b) return;
+    d.dx=lim(p.x-arrastre.dx, -b.x, W-b.x-b.w);
+    d.dy=lim(p.y-arrastre.dy, -b.y, H-b.y-b.h);
+  }
   function onPointerUp(){ arrastre=null; }
 
-  function ponerFoto(img){ foto=img; encuadre={dx:0, dy:0}; }
+  function centrarFoto(){ $('lFotoX').value=50; $('lFotoY').value=50; }
+  function ponerFoto(img){ foto=img; geoFoto=null; centrarFoto(); }
 
   /* ---------- controles propios ---------- */
   $('lFoto').addEventListener('change',e=>{
     const f=e.target.files[0]; if(!f) return;
     leerImagen(f,img=>{ ponerFoto(img); App.render(); });
   });
-  $('lReencuadrar').addEventListener('click',()=>{ $('lZoom').value=100; encuadre={dx:0, dy:0}; App.render(); });
+  $('lReencuadrar').addEventListener('click',()=>{ $('lZoom').value=100; centrarFoto(); App.render(); });
+  $('lTextoReset').addEventListener('click',()=>{ desp={}; App.render(); });
   $('lRand').addEventListener('click',()=>{ seed=Math.floor(Math.random()*1e9); App.render(); });
 
   return {
     render, nombreArchivo: ()=>'miniatura-'+$('lPlantilla').value+'.png',
     puedeArrastrar, onPointerDown, onPointerMove, onPointerUp,
-    ponerFoto, ajustar, insignia, etiquetaPodcast
+    ponerFoto, ajustar, insignia, etiquetaPodcast,
+    cajaTexto: k=>cajas[k] && {...cajas[k], x:cajas[k].x+despDe(k).dx, y:cajas[k].y+despDe(k).dy}
   };
 })();

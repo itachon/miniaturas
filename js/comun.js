@@ -44,6 +44,29 @@ function drawFrame(){
   ctx.restore();
 }
 
+/* ---------- encuadre de fotos con sliders X/Y ---------- */
+// "cover" de img en el área a, con zoom; px/py (0–1) eligen la parte visible: 0.5 = centrada
+function encuadrar(img,a,zoom,px,py){
+  const s=Math.max(a.w/img.width, a.h/img.height)*zoom, w=img.width*s, h=img.height*s;
+  const mx=(w-a.w)/2, my=(h-a.h)/2;
+  return { x:a.x+(a.w-w)/2+(px*2-1)*mx, y:a.y+(a.h-h)/2+(py*2-1)*my, w, h, mx, my };
+}
+// arrastrar la foto mueve sus sliders X/Y (g = último encuadre dibujado)
+function iniciarEncuadre(p,g,idX,idY){ return { px:p.x, py:p.y, x0:+$(idX).value, y0:+$(idY).value, mx:g.mx, my:g.my, idX, idY }; }
+function moverEncuadre(d,p){
+  const v=(v0,delta,m)=> m>0 ? Math.max(0,Math.min(100,Math.round(v0+delta/m*50))) : v0;
+  $(d.idX).value=v(d.x0,p.x-d.px,d.mx);
+  $(d.idY).value=v(d.y0,p.y-d.py,d.my);
+}
+
+// ancho de la línea más ancha con la fuente dada
+function medirTexto(lineas,peso,size,ls){
+  ctx.save(); ctx.font=`${peso} ${size}px Montserrat, sans-serif`; setLS(ctx,size*ls);
+  const ancho=Math.max(0,...lineas.map(l=>ctx.measureText(l).width));
+  ctx.restore();
+  return ancho;
+}
+
 /* ---------- archivos ---------- */
 function leerImagen(file, listo){
   const r=new FileReader();
