@@ -24,7 +24,7 @@ function fotoDePrueba(w, ancho=1600, alto=900){
 }
 
 // "Cortos / POV" con valores por defecto (se fija en la Tarea 1, paso 5)
-const LINEA_BASE_CORTOS = '647c2457';
+const LINEA_BASE_CORTOS = 'd0d999';
 
 prueba('Cortos por defecto coincide con la línea base', w=>{
   if(w.App && w.App.mostrar) w.App.mostrar('cortos');
@@ -210,6 +210,107 @@ prueba('La foto se escala con suavizado de alta calidad', w=>{
   afirmar(calidad==='high', 'calidad = '+calidad);
 });
 
+/* ---------- Cortos: imagen de fondo ---------- */
+prueba('Cortos: la imagen de fondo cubre todo y se encuadra arrastrando', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos;
+  try{
+    for(const [fw,fh] of [[1600,900],[300,900]]){
+      C.ponerFondo(fotoDePrueba(w,fw,fh)); w.App.render();
+      afirmar(hashLienzo(w) !== LINEA_BASE_CORTOS, 'el fondo no cambió el lienzo');
+      afirmar(!$w(w,'bgQuitar').hidden, 'botón quitar oculto con fondo');
+      afirmar(C.onPointerDown({x:60, y:60}), 'no arrastra el fondo fuera del ícono');
+      C.onPointerMove({x:5060, y:5060}); C.onPointerUp(); w.App.render();
+      for(const [x,y] of [[40,40],[40,680],[1240,680],[1240,40]])
+        afirmar(pixel(w,x,y)[3] === 255, `hueco en (${x},${y}) con foto ${fw}×${fh}`);
+    }
+  } finally { C.ponerFondo(null); w.App.render(); }
+});
+
+prueba('Cortos: sobre el ícono se arrastra el ícono, no el fondo', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos, x0=$w(w,'iconX').value;
+  try{
+    C.ponerFondo(fotoDePrueba(w)); w.App.render();
+    afirmar(C.onPointerDown({x:1280*0.79, y:720*0.51}), 'no toma el ícono');
+    C.onPointerMove({x:1280*0.5, y:720*0.51}); C.onPointerUp();
+    afirmar($w(w,'iconX').value === '50', 'iconX = '+$w(w,'iconX').value);
+  } finally { $w(w,'iconX').value=x0; C.ponerFondo(null); w.App.render(); }
+});
+
+prueba('Cortos: quitar el fondo vuelve a la línea base', w=>{
+  w.App.mostrar('cortos');
+  w.Cortos.ponerFondo(fotoDePrueba(w)); w.App.render();
+  $w(w,'bgQuitar').click();
+  afirmar($w(w,'bgQuitar').hidden, 'botón quitar visible sin fondo');
+  afirmar(hashLienzo(w) === LINEA_BASE_CORTOS, 'hash '+hashLienzo(w));
+});
+
+prueba('Cortos: el tamaño del título cambia en todo su recorrido', w=>{
+  w.App.mostrar('cortos');
+  const s=$w(w,'titleSize'), antes=s.value, hashes=new Set();
+  try{
+    for(const v of [140,170,200]){ s.value=v; w.App.render(); hashes.add(hashLienzo(w)); }
+  } finally { s.value=antes; w.App.render(); }
+  afirmar(hashes.size===3, 'tamaños distintos dibujan igual');
+});
+
+prueba('Cortos: "Sin ícono" oculta los ajustes del ícono', w=>{
+  w.App.mostrar('cortos');
+  const sel=$w(w,'icon'), antes=sel.value;
+  try{
+    sel.value='none'; w.App.render();
+    afirmar($w(w,'iconAjustes').hidden, 'ajustes visibles sin ícono');
+    sel.value='globo'; w.App.render();
+    afirmar(!$w(w,'iconAjustes').hidden, 'ajustes ocultos con ícono');
+  } finally { sel.value=antes; w.App.render(); }
+});
+
+/* ---------- Cortos: arrastrar el título ---------- */
+prueba('Cortos: arrastrar el título lo mueve y no lo saca del lienzo', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos;
+  try{
+    afirmar(C.onPointerDown({x:200, y:300}), 'no toma el título');
+    C.onPointerMove({x:200, y:200}); C.onPointerUp(); w.App.render();
+    const movido=hashLienzo(w);
+    afirmar(movido !== LINEA_BASE_CORTOS, 'el título no se movió');
+    afirmar(C.puedeArrastrar({x:200, y:200}) && C.onPointerDown({x:200, y:200}), 'no toma el título en su nueva posición');
+    C.onPointerMove({x:-5000, y:-5000}); C.onPointerUp(); w.App.render();
+    afirmar(blancosEn(w,0,0,1280,720) > 0, 'el título salió del lienzo');
+  } finally { $w(w,'centerTitle').click(); }
+  afirmar(hashLienzo(w) === LINEA_BASE_CORTOS, 'reiniciar no vuelve a la línea base');
+});
+
+prueba('Cortos: el subtítulo se arrastra sin mover el título', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos, tituloAntes=blancosEn(w,90,180,700,250);
+  try{
+    afirmar(C.onPointerDown({x:300, y:490}), 'no toma el subtítulo');
+    C.onPointerMove({x:300, y:650}); C.onPointerUp(); w.App.render();
+    afirmar(hashLienzo(w) !== LINEA_BASE_CORTOS, 'el subtítulo no se movió');
+    afirmar(blancosEn(w,90,180,700,250) === tituloAntes, 'el título también se movió');
+    afirmar(C.onPointerDown({x:300, y:640}), 'no toma el subtítulo en su nueva posición');
+    C.onPointerUp();
+    afirmar(C.onPointerDown({x:200, y:300}), 'no toma el título');
+    C.onPointerMove({x:200, y:250}); C.onPointerUp(); w.App.render();
+  } finally { $w(w,'centerTitle').click(); }
+  afirmar(hashLienzo(w) === LINEA_BASE_CORTOS, 'reiniciar no vuelve a la línea base');
+});
+
+prueba('Cortos: con fondo, el título se arrastra antes que el fondo', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos;
+  try{
+    C.ponerFondo(fotoDePrueba(w)); w.App.render();
+    const antes=hashLienzo(w);
+    afirmar(C.onPointerDown({x:200, y:300}), 'no toma nada');
+    C.onPointerMove({x:260, y:300}); C.onPointerUp();
+    $w(w,'centerTitle').click();
+    afirmar(hashLienzo(w) === antes, 'se movió el fondo en vez del título');
+  } finally { C.ponerFondo(null); w.App.render(); }
+});
+
 // foto sintética más realista: cielo de atardecer, sol y montañas
 function fotoPaisaje(w){
   const c=w.document.createElement('canvas'); c.width=1600; c.height=1000;
@@ -226,6 +327,8 @@ function fotoPaisaje(w){
 async function capturas(w){
   const res={}, url=()=>$w(w,'cv').toDataURL('image/png');
   w.App.mostrar('cortos'); res.cortos=url();
+  w.Cortos.ponerFondo(fotoPaisaje(w)); w.App.render(); res['cortos-con-fondo']=url();
+  w.Cortos.ponerFondo(null); w.App.render();
   w.App.mostrar('largos');
   $w(w,'lPlantilla').value='vlog'; w.Largos.ponerFoto(null); w.App.render(); res['vlog-sin-foto']=url();
   w.Largos.ponerFoto(fotoPaisaje(w));

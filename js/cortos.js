@@ -2,13 +2,17 @@
 var Cortos = (() => {
   let seed = 20260929;
   let userImg = null;
+  let fondo = null;
+  let encuadre = {dx:0, dy:0};   // desplazamiento de la imagen de fondo, en px del lienzo
   let iconBox = null;
+  let desp = {titulo:{dx:0, dy:0}, subtitulo:{dx:0, dy:0}};   // desplazamiento de cada texto, en px del lienzo
+  let cajas = {};                // caja de cada texto, sin desplazar
   let drag = null;
 
   function opts(){
     return {
       title: $('title').value, subtitle: $('subtitle').value,
-      bg1: $('bg1').value, bg2: $('bg2').value, gold: $('gold').value,
+      bg1: $('bg1').value, bg2: $('bg2').value, gold: $('gold').value, bgOscuro: +$('bgOscuro').value/100,
       icon: $('icon').value, tint: $('tint').checked,
       titleSize: +$('titleSize').value, iconScale: +$('iconScale').value/100, iconAlpha: +$('iconAlpha').value/100,
       iconX: +$('iconX').value/100, iconY: +$('iconY').value/100,
@@ -17,11 +21,29 @@ var Cortos = (() => {
   }
 
   /* ---------- fondo ---------- */
+  // "cover" + desplazamiento limitado para no dejar huecos
+  function geometriaFondo(){
+    const s=Math.max(W/fondo.width, H/fondo.height);
+    const w=fondo.width*s, h=fondo.height*s;
+    const mx=(w-W)/2, my=(h-H)/2;
+    encuadre.dx=Math.max(-mx, Math.min(mx, encuadre.dx));
+    encuadre.dy=Math.max(-my, Math.min(my, encuadre.dy));
+    return { x:(W-w)/2+encuadre.dx, y:(H-h)/2+encuadre.dy, w, h };
+  }
+
   function drawBackground(R,o){
     ctx.fillStyle = o.bg2; ctx.fillRect(0,0,W,H);
-    let g = ctx.createRadialGradient(W*0.36,H*0.32,40,W*0.45,H*0.45,W*0.85);
-    g.addColorStop(0,o.bg1); g.addColorStop(1,o.bg2);
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    let g;
+    if(fondo){
+      const f=geometriaFondo();
+      ctx.imageSmoothingQuality='high';
+      ctx.drawImage(fondo,f.x,f.y,f.w,f.h);
+      ctx.fillStyle = rgba(o.bg2,o.bgOscuro); ctx.fillRect(0,0,W,H);
+    } else {
+      g = ctx.createRadialGradient(W*0.36,H*0.32,40,W*0.45,H*0.45,W*0.85);
+      g.addColorStop(0,o.bg1); g.addColorStop(1,o.bg2);
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    }
 
     // brillo cálido en el horizonte
     g = ctx.createLinearGradient(0,H*0.6,0,H);
@@ -341,7 +363,7 @@ var Cortos = (() => {
   function drawText(o){
     const lines=o.title.toUpperCase().split('\n').filter(l=>l.trim()!=='');
     if(!lines.length && !o.subtitle) return;
-    const x=96, maxW=W*0.56;
+    const x=96, maxW=W-2*x;   // solo se reduce si no cabe en el lienzo
     let size=o.titleSize;
     ctx.save();
     ctx.textBaseline='alphabetic';
@@ -353,24 +375,30 @@ var Cortos = (() => {
     const blockH=lh*lines.length+(o.subtitle?subSize*2:0);
     const y0=H/2-blockH/2+size*0.82;
     const yEnd=y0+(lines.length-1)*lh;
+    if(lines.length)
+      cajas.titulo={x, y:y0-size*0.82, w:Math.max(...lines.map(l=>ctx.measureText(l).width)), h:yEnd-y0+size*1.04};
 
     // degradado blanco → dorado a lo largo del bloque
     const grad=ctx.createLinearGradient(0,y0-size*0.8,0,yEnd);
     grad.addColorStop(0,'#fffdf4'); grad.addColorStop(0.4,lighten(o.gold,0.65)); grad.addColorStop(1,lighten(o.gold,0.12));
 
+    ctx.save(); ctx.translate(desp.titulo.dx,desp.titulo.dy);
     lines.forEach((l,i)=>{
       const yy=y0+i*lh;
       ctx.shadowColor=rgba(o.gold,0.85); ctx.shadowBlur=size*0.45;
       ctx.fillStyle=rgba(o.gold,0.9); ctx.fillText(l,x,yy);
       ctx.shadowBlur=size*0.1; ctx.fillStyle=grad; ctx.fillText(l,x,yy);
     });
+    ctx.restore();
 
     if(o.subtitle){
       const sy=yEnd+subSize*2.1;
+      ctx.translate(desp.subtitulo.dx,desp.subtitulo.dy);
       ctx.font=`600 ${subSize}px Montserrat, sans-serif`; setLS(ctx,subSize*0.05);
       ctx.shadowColor=rgba(o.gold,0.7); ctx.shadowBlur=18;
       ctx.fillStyle=lighten(o.gold,0.15);
       ctx.fillText(o.subtitle.toUpperCase(),x+4,sy);
+      cajas.subtitulo={x:x+4, y:sy-subSize*0.9, w:ctx.measureText(o.subtitle.toUpperCase()).width, h:subSize*1.2};
     }
     ctx.restore();
   }
@@ -382,7 +410,11 @@ var Cortos = (() => {
     $('iconXv').textContent=$('iconX').value+'%';
     $('iconYv').textContent=$('iconY').value+'%';
     $('iconAlphav').textContent=$('iconAlpha').value+'%';
-    iconBox=null;
+    $('titleSizev').textContent=$('titleSize').value;
+    $('bgOscurov').textContent=$('bgOscuro').value+'%';
+    $('bgQuitar').hidden=!fondo;
+    $('iconAjustes').hidden=o.icon==='none';
+    iconBox=null; cajas={};
     ctx.save(); ctx.clearRect(0,0,W,H);
     drawBackground(R,o);
     drawBokeh(R,o);
@@ -394,15 +426,34 @@ var Cortos = (() => {
     ctx.restore();
   }
 
-  /* ---------- arrastrar el ícono ---------- */
-  function puedeArrastrar(p){ const b=iconBox; return !!b && p.x>=b.x && p.x<=b.x+b.w && p.y>=b.y && p.y<=b.y+b.h; }
+  /* ---------- arrastrar el subtítulo, el título, el ícono o el fondo (en ese orden) ---------- */
+  const dentro=(b,p)=>!!b && p.x>=b.x && p.x<=b.x+b.w && p.y>=b.y && p.y<=b.y+b.h;
+  function textoEn(p){
+    return ['subtitulo','titulo'].find(k=>{
+      const b=cajas[k], d=desp[k];
+      return b && dentro({...b, x:b.x+d.dx, y:b.y+d.dy},p);
+    });
+  }
+  function puedeArrastrar(p){ return !!textoEn(p) || dentro(iconBox,p) || !!fondo; }
   function onPointerDown(p){
-    if(!puedeArrastrar(p)) return false;
-    drag={dx:p.x-W*$('iconX').value/100, dy:p.y-H*$('iconY').value/100};
+    const t=textoEn(p);
+    if(t) drag={que:t, dx:p.x-desp[t].dx, dy:p.y-desp[t].dy};
+    else if(dentro(iconBox,p)) drag={que:'icono', dx:p.x-W*$('iconX').value/100, dy:p.y-H*$('iconY').value/100};
+    else if(fondo) drag={que:'fondo', dx:p.x-encuadre.dx, dy:p.y-encuadre.dy};
+    else return false;
     return true;
   }
   function onPointerMove(p){
     if(!drag) return;
+    if(drag.que==='fondo'){ encuadre.dx=p.x-drag.dx; encuadre.dy=p.y-drag.dy; return; }
+    if(drag.que in desp){
+      // el texto no puede salir del lienzo
+      const b=cajas[drag.que], d=desp[drag.que], lim=(v,a,z)=>Math.max(a,Math.min(z,v));
+      if(!b) return;
+      d.dx=lim(p.x-drag.dx, -b.x, W-b.x-b.w);
+      d.dy=lim(p.y-drag.dy, -b.y, H-b.y-b.h);
+      return;
+    }
     const clamp=v=>Math.max(0,Math.min(100,Math.round(v)));
     $('iconX').value=clamp((p.x-drag.dx)/W*100);
     $('iconY').value=clamp((p.y-drag.dy)/H*100);
@@ -414,8 +465,15 @@ var Cortos = (() => {
     const f=e.target.files[0]; if(!f) return;
     leerImagen(f,img=>{ userImg=img; $('icon').value='imagen'; App.render(); });
   });
+  function ponerFondo(img){ fondo=img; encuadre={dx:0, dy:0}; }
+  $('bgFile').addEventListener('change',e=>{
+    const f=e.target.files[0]; if(!f) return;
+    leerImagen(f,img=>{ ponerFondo(img); App.render(); });
+  });
+  $('bgQuitar').addEventListener('click',()=>{ ponerFondo(null); $('bgFile').value=''; App.render(); });
+  $('centerTitle').addEventListener('click',()=>{ desp={titulo:{dx:0, dy:0}, subtitulo:{dx:0, dy:0}}; App.render(); });
   $('centerIcon').addEventListener('click',()=>{ $('iconX').value=79; $('iconY').value=51; App.render(); });
   $('rand').addEventListener('click',()=>{ seed=Math.floor(Math.random()*1e9); App.render(); });
 
-  return { render, nombreArchivo: ()=>'miniatura-corto.png', puedeArrastrar, onPointerDown, onPointerMove, onPointerUp };
+  return { render, nombreArchivo: ()=>'miniatura-corto.png', puedeArrastrar, onPointerDown, onPointerMove, onPointerUp, ponerFondo };
 })();
