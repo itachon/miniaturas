@@ -67,6 +67,93 @@ function medirTexto(lineas,peso,size,ls){
   return ancho;
 }
 
+/* ---------- fotos superpuestas ----------
+   Cada sección tiene su lista de fotos: se mueven arrastrando con el botón izquierdo
+   y se agrandan o achican con Ctrl + rueda del mouse, tomando el cursor como centro.
+   inputId: <input type=file multiple>; listaId: contenedor donde se listan con su botón ✕. */
+function crearFotos(inputId, listaId){
+  const lista=[];   // { img, cx, cy, w }: centro y ancho en px del lienzo
+  let arrastre=null;
+  const alto=f=>f.w*f.img.height/f.img.width;
+  const caja=f=>({ x:f.cx-f.w/2, y:f.cy-alto(f)/2, w:f.w, h:alto(f) });
+  const lim=(v,a,z)=>Math.max(a,Math.min(z,v));
+
+  // la foto de más arriba bajo el punto p
+  function en(p){
+    for(let i=lista.length-1;i>=0;i--){
+      const b=caja(lista[i]);
+      if(p.x>=b.x && p.x<=b.x+b.w && p.y>=b.y && p.y<=b.y+b.h) return lista[i];
+    }
+    return null;
+  }
+
+  function agregar(img){
+    // cabe en 30 % del ancho y 50 % del alto; las nuevas se escalonan para no taparse
+    const w=Math.min(W*0.3, H*0.5*img.width/img.height), n=lista.length%6;
+    lista.push({ img, cx:W/2+n*40, cy:H/2+n*30, w });
+    listar();
+  }
+  function quitar(f){ const i=lista.indexOf(f); if(i>=0) lista.splice(i,1); listar(); }
+  function vaciar(){ lista.length=0; listar(); }
+
+  function dibujar(){
+    if(!lista.length) return;
+    ctx.save(); ctx.imageSmoothingQuality='high';
+    ctx.shadowColor='rgba(0,0,0,0.45)'; ctx.shadowBlur=24; ctx.shadowOffsetY=6;
+    lista.forEach(f=>{ const b=caja(f); ctx.drawImage(f.img,b.x,b.y,b.w,b.h); });
+    ctx.restore();
+  }
+
+  // arrastre: la foto tomada pasa al frente; su centro no sale del lienzo
+  function tomar(p){
+    const f=en(p); if(!f) return false;
+    lista.splice(lista.indexOf(f),1); lista.push(f);
+    arrastre={ f, dx:p.x-f.cx, dy:p.y-f.cy };
+    listar();
+    return true;
+  }
+  function mover(p){
+    if(!arrastre) return false;
+    arrastre.f.cx=lim(p.x-arrastre.dx,0,W);
+    arrastre.f.cy=lim(p.y-arrastre.dy,0,H);
+    return true;
+  }
+  function soltar(){ arrastre=null; }
+
+  // deltaY > 0 achica, < 0 agranda; el punto bajo el cursor queda fijo
+  function escalar(p,deltaY){
+    const f=en(p); if(!f) return false;
+    const w=lim(f.w*Math.exp(-lim(deltaY,-200,200)*0.0015), 40, W*3), k=w/f.w;
+    f.cx=p.x+(f.cx-p.x)*k; f.cy=p.y+(f.cy-p.y)*k; f.w=w;
+    return true;
+  }
+
+  // lista del panel: miniatura + botón para quitar, la de más arriba primero
+  function listar(){
+    const cont=$(listaId); if(!cont) return;
+    cont.replaceChildren(...lista.slice().reverse().map((f,i)=>{
+      const fila=document.createElement('div'); fila.className='foto-item';
+      const mini=document.createElement('canvas'); mini.width=64; mini.height=40;
+      const m=mini.getContext('2d'), s=Math.min(64/f.img.width,40/f.img.height);
+      m.drawImage(f.img,(64-f.img.width*s)/2,(40-f.img.height*s)/2,f.img.width*s,f.img.height*s);
+      const nombre=document.createElement('span'); nombre.textContent='Foto '+(lista.length-i);
+      const x=document.createElement('button'); x.type='button'; x.className='ghost'; x.textContent='✕';
+      x.title='Quitar esta foto';
+      x.addEventListener('click',()=>{ quitar(f); App.render(); });
+      fila.append(mini,nombre,x);
+      return fila;
+    }));
+    cont.hidden=!lista.length;
+  }
+
+  $(inputId).addEventListener('change',e=>{
+    [...e.target.files].forEach(file=>leerImagen(file,img=>{ agregar(img); App.render(); }));
+    e.target.value='';
+  });
+
+  return { lista, en, agregar, quitar, vaciar, dibujar, tomar, mover, soltar, escalar };
+}
+
 /* ---------- archivos ---------- */
 function leerImagen(file, listo){
   const r=new FileReader();

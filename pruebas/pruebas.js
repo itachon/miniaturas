@@ -434,6 +434,100 @@ prueba('Largos: título y subtítulo se arrastran por separado en cada plantilla
   } finally { $w(w,'lTextoReset').click(); L.ponerFoto(null); $w(w,'lPlantilla').value='vlog'; w.App.render(); }
 });
 
+/* ---------- varias fotos: mover y Ctrl + rueda ---------- */
+// rueda sobre el lienzo en el punto (x,y) del lienzo, con o sin Ctrl
+function rueda(w,x,y,deltaY,ctrl=true){
+  const cv=$w(w,'cv'), r=cv.getBoundingClientRect();
+  const e=new w.WheelEvent('wheel',{ deltaY, ctrlKey:ctrl, bubbles:true, cancelable:true,
+    clientX:r.left+x*r.width/1280, clientY:r.top+y*r.height/720 });
+  cv.dispatchEvent(e);
+  return e;
+}
+
+prueba('Cortos: agregar varias fotos, moverlas y quitarlas', w=>{
+  w.App.mostrar('cortos');
+  const C=w.Cortos, F=C.fotos, ids=['icon','title','subtitle'], antes=ids.map(i=>$w(w,i).value);
+  try{
+    // sin texto ni ícono para que nada tenga prioridad sobre las fotos
+    $w(w,'icon').value='none'; $w(w,'title').value=''; $w(w,'subtitle').value='';
+    F.agregar(fotoDePrueba(w,800,600)); F.agregar(fotoDePrueba(w,400,800)); F.agregar(fotoDePrueba(w,600,600));
+    w.App.render();
+    afirmar(F.lista.length===3, 'fotos: '+F.lista.length);
+    afirmar(w.document.querySelectorAll('#cFotosLista .foto-item').length===3, 'la lista del panel no muestra 3 fotos');
+    afirmar(hashLienzo(w)!==LINEA_BASE_CORTOS, 'las fotos no se dibujan');
+    // la de más arriba se toma y se mueve; las demás quedan donde estaban
+    const arriba=F.lista[2], otra=F.lista[0], ox=otra.cx;
+    afirmar(C.onPointerDown({x:arriba.cx, y:arriba.cy}), 'no toma la foto');
+    C.onPointerMove({x:arriba.cx-300, y:arriba.cy+50}); C.onPointerUp();
+    afirmar(F.lista[2]===arriba && Math.round(arriba.cx)===Math.round(1280/2+2*40-300), 'cx = '+arriba.cx);
+    afirmar(otra.cx===ox, 'se movió otra foto');
+    // al hacer clic en una foto de abajo pasa al frente
+    // esquina superior izquierda de la foto de abajo, donde no hay otra encima
+    afirmar(C.onPointerDown({x:otra.cx-otra.w/2+5, y:otra.cy-otra.w*0.75/2+5}), 'no toma la foto de abajo'); C.onPointerUp();
+    afirmar(F.lista[2]===otra, 'la foto tomada no pasó al frente');
+    // el centro no sale del lienzo
+    C.onPointerDown({x:otra.cx, y:otra.cy}); C.onPointerMove({x:99999, y:-99999}); C.onPointerUp();
+    afirmar(otra.cx===1280 && otra.cy===0, `centro fuera: ${otra.cx},${otra.cy}`);
+    // quitar con el botón ✕ de la primera fila (la de más arriba)
+    w.document.querySelector('#cFotosLista .foto-item button').click();
+    afirmar(F.lista.length===2 && !F.lista.includes(otra), 'el ✕ no quitó la foto de arriba');
+  } finally { F.vaciar(); ids.forEach((i,k)=>{ $w(w,i).value=antes[k]; }); w.App.render(); }
+  afirmar($w(w,'cFotosLista').hidden, 'la lista sigue visible sin fotos');
+  afirmar(hashLienzo(w)===LINEA_BASE_CORTOS, 'sin fotos no vuelve a la línea base');
+});
+
+prueba('Ctrl + rueda agranda y achica la foto bajo el cursor', w=>{
+  w.App.mostrar('cortos');
+  const F=w.Cortos.fotos;
+  try{
+    F.agregar(fotoDePrueba(w,800,600)); w.App.render();
+    const f=F.lista[0], w0=f.w, px=f.cx+50, py=f.cy+20;
+    // el punto bajo el cursor queda fijo: su posición relativa en la foto no cambia
+    const rel=()=>[(px-(f.cx-f.w/2))/f.w, (py-(f.cy-f.w*0.75/2))/(f.w*0.75)];
+    const r0=rel();
+    let e=rueda(w,px,py,-100);
+    afirmar(e.defaultPrevented, 'Ctrl + rueda no se bloqueó (la página haría zoom)');
+    afirmar(f.w>w0, `no agrandó: ${f.w} ≤ ${w0}`);
+    const r1=rel();
+    // tolerancia: el evento redondea la posición del cursor a píxeles enteros
+    afirmar(Math.abs(r1[0]-r0[0])<0.01 && Math.abs(r1[1]-r0[1])<0.01, `el punto bajo el cursor se movió: ${r0} → ${r1}`);
+    const w1=f.w;
+    rueda(w,px,py,100); rueda(w,px,py,100);
+    afirmar(f.w<w1, 'no achicó');
+    // sin Ctrl no cambia, y la página puede hacer scroll normal
+    const w2=f.w; e=rueda(w,px,py,100,false);
+    afirmar(f.w===w2 && !e.defaultPrevented, 'rueda sin Ctrl cambió la foto');
+    // fuera de las fotos no se bloquea el Ctrl + rueda del navegador
+    e=rueda(w,30,30,-100);
+    afirmar(!e.defaultPrevented, 'Ctrl + rueda fuera de una foto se bloqueó');
+    // tamaño mínimo
+    for(let i=0;i<60;i++) rueda(w,f.cx,f.cy,200);
+    afirmar(f.w>=40, 'ancho bajo el mínimo: '+f.w);
+  } finally { F.vaciar(); w.App.render(); }
+});
+
+prueba('Largos: las fotos extra quedan bajo el texto y sobre la foto de fondo', w=>{
+  w.App.mostrar('largos'); $w(w,'lPlantilla').value='vlog';
+  const L=w.Largos, F=L.fotos;
+  try{
+    L.ponerFoto(fotoDePrueba(w)); w.App.render();
+    const tit=L.cajaTexto('titulo'), c={x:tit.x+40, y:tit.y+tit.h/2};
+    F.agregar(fotoDePrueba(w,800,800)); const f=F.lista[0];
+    f.cx=c.x; f.cy=c.y; w.App.render();
+    // sobre el título se toma el título; fuera de él, la foto extra; fuera de ambas, la foto de fondo
+    afirmar(L.onPointerDown(c), 'no toma nada'); L.onPointerMove({x:c.x+10, y:c.y}); L.onPointerUp();
+    afirmar(f.cx===c.x, 'tomó la foto extra en vez del título');
+    const pf={x:f.cx, y:f.cy-f.w/2+10};
+    afirmar(L.onPointerDown(pf), 'no toma la foto extra'); L.onPointerMove({x:pf.x+25, y:pf.y}); L.onPointerUp();
+    afirmar(f.cx===c.x+25, 'la foto extra no se movió');
+    afirmar($w(w,'lFotoX').value==='50', 'se movió la foto de fondo');
+    // Ctrl + rueda también funciona en Videos largos
+    const w0=f.w; rueda(w,f.cx,f.cy,-100);
+    afirmar(f.w>w0, 'Ctrl + rueda no agranda en Videos largos');
+    afirmar(w.document.querySelectorAll('#lFotosLista .foto-item').length===1, 'lista de Videos largos');
+  } finally { F.vaciar(); $w(w,'lTextoReset').click(); L.ponerFoto(null); w.App.render(); }
+});
+
 // foto sintética más realista: cielo de atardecer, sol y montañas
 function fotoPaisaje(w){
   const c=w.document.createElement('canvas'); c.width=1600; c.height=1000;
@@ -452,6 +546,9 @@ async function capturas(w){
   w.App.mostrar('cortos'); res.cortos=url();
   w.Cortos.ponerFondo(fotoPaisaje(w)); w.App.render(); res['cortos-con-fondo']=url();
   w.Cortos.ponerFondo(null); w.App.render();
+  w.Cortos.fotos.agregar(fotoPaisaje(w)); w.Cortos.fotos.agregar(fotoDePrueba(w,600,800)); w.App.render();
+  res['cortos-con-fotos']=url();
+  w.Cortos.fotos.vaciar(); w.App.render();
   w.App.mostrar('largos');
   $w(w,'lPlantilla').value='vlog'; w.Largos.ponerFoto(null); w.App.render(); res['vlog-sin-foto']=url();
   w.Largos.ponerFoto(fotoPaisaje(w));

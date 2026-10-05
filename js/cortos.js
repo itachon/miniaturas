@@ -3,6 +3,7 @@ var Cortos = (() => {
   let seed = 20260929;
   let userImg = null;
   let fondo = null;
+  const fotos = crearFotos('cFotos','cFotosLista');
   let geoFondo = null;           // último encuadre dibujado de la imagen de fondo
   let iconBox = null;
   let desp = {titulo:{dx:0, dy:0}, subtitulo:{dx:0, dy:0}};   // desplazamiento de cada texto, en px del lienzo
@@ -419,6 +420,7 @@ var Cortos = (() => {
     ctx.save(); ctx.clearRect(0,0,W,H);
     drawBackground(R,o);
     if(o.efectos) drawBokeh(R,o);
+    fotos.dibujar();
     const p=placeIcon(o);
     if(o.efectos){ drawParticles(R,o,p); drawSparkles(R,o,p); }
     drawText(o);
@@ -434,11 +436,12 @@ var Cortos = (() => {
       return b && dentro({...b, x:b.x+d.dx, y:b.y+d.dy},p);
     });
   }
-  function puedeArrastrar(p){ return !!textoEn(p) || dentro(iconBox,p) || !!fondo; }
+  function puedeArrastrar(p){ return !!textoEn(p) || dentro(iconBox,p) || !!fotos.en(p) || !!fondo; }
   function onPointerDown(p){
     const t=textoEn(p);
     if(t) drag={que:t, dx:p.x-desp[t].dx, dy:p.y-desp[t].dy};
     else if(dentro(iconBox,p)) drag={que:'icono', dx:p.x-W*$('iconX').value/100, dy:p.y-H*$('iconY').value/100};
+    else if(fotos.tomar(p)) drag={que:'foto'};
     else if(fondo && geoFondo) drag={que:'fondo', e:iniciarEncuadre(p,geoFondo,'bgX','bgY')};
     else return false;
     return true;
@@ -446,6 +449,7 @@ var Cortos = (() => {
   function onPointerMove(p){
     if(!drag) return;
     if(drag.que==='fondo'){ moverEncuadre(drag.e,p); return; }
+    if(drag.que==='foto'){ fotos.mover(p); return; }
     if(drag.que in desp){
       // el texto no puede salir del lienzo
       const b=cajas[drag.que], d=desp[drag.que], lim=(v,a,z)=>Math.max(a,Math.min(z,v));
@@ -458,7 +462,9 @@ var Cortos = (() => {
     $('iconX').value=clamp((p.x-drag.dx)/W*100);
     $('iconY').value=clamp((p.y-drag.dy)/H*100);
   }
-  function onPointerUp(){ drag=null; }
+  function onPointerUp(){ drag=null; fotos.soltar(); }
+  // Ctrl + rueda: escala la foto bajo el cursor
+  function onWheel(p,deltaY){ return fotos.escalar(p,deltaY); }
 
   /* ---------- pestañas del panel ---------- */
   function mostrarGrupo(nombre){
@@ -483,5 +489,5 @@ var Cortos = (() => {
   $('centerIcon').addEventListener('click',()=>{ $('iconX').value=79; $('iconY').value=51; App.render(); });
   $('rand').addEventListener('click',()=>{ seed=Math.floor(Math.random()*1e9); App.render(); });
 
-  return { render, nombreArchivo: ()=>'miniatura-corto.png', puedeArrastrar, onPointerDown, onPointerMove, onPointerUp, ponerFondo };
+  return { render, nombreArchivo: ()=>'miniatura-corto.png', puedeArrastrar, onPointerDown, onPointerMove, onPointerUp, onWheel, ponerFondo, fotos };
 })();

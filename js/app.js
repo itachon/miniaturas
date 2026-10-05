@@ -40,6 +40,13 @@ var App = (() => {
   }));
   cv.style.touchAction='none';
 
+  /* Ctrl + rueda sobre una foto la agranda o achica (sin hacer zoom en la página) */
+  cv.addEventListener('wheel',e=>{
+    if(!e.ctrlKey || !activa().onWheel) return;
+    const dy = e.deltaMode===1 ? e.deltaY*33 : e.deltaY;   // ruedas que miden en líneas
+    if(activa().onWheel(canvasPos(e),dy)){ e.preventDefault(); programar(); }
+  },{ passive:false });
+
   document.querySelectorAll('[data-descargar]').forEach(b=>
     b.addEventListener('click',()=>descargar(activa().nombreArchivo())));
 

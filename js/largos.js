@@ -2,6 +2,7 @@
 var Largos = (() => {
   let seed = 20260930;
   let foto = null;
+  const fotos = crearFotos('lFotos','lFotosLista');
   let geoFoto = null;            // último encuadre dibujado de la foto
   let area = null;               // área de la foto en la plantilla dibujada
   let arrastre = null;
@@ -142,6 +143,7 @@ var Largos = (() => {
     g=ctx.createLinearGradient(0,H*0.5,0,H);
     g.addColorStop(0,'rgba(3,6,18,0)'); g.addColorStop(1,'rgba(3,6,18,0.6)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    fotos.dibujar();
 
     const x=80, sub=o.subtitulo.trim().toUpperCase();
     const yBase= sub ? H-140 : H-80;
@@ -190,6 +192,7 @@ var Largos = (() => {
     g=ctx.createLinearGradient(a.x,0,a.x+240,0);
     g.addColorStop(0,NOCHE); g.addColorStop(1,'rgba(8,18,46,0)');
     ctx.fillStyle=g; ctx.fillRect(a.x,0,240,H);
+    fotos.dibujar();
 
     const x=70, maxW=W*0.42;
     microfono(x+22,112,0.4,o);
@@ -241,6 +244,7 @@ var Largos = (() => {
     const g=ctx.createLinearGradient(0,H*0.35,0,H);
     g.addColorStop(0,'rgba(3,6,18,0)'); g.addColorStop(1,'rgba(3,6,18,0.85)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    fotos.dibujar();
 
     const x=80, maxTexto=RUTA_X0-x-30;   // título, subtítulo y fecha no llegan a la ruta
     if(o.fecha) insignia(o.fecha.toUpperCase(),x,56,26,o,maxTexto);
@@ -299,10 +303,11 @@ var Largos = (() => {
     });
   }
   const sobreFoto=p=>!!foto && !!geoFoto && dentro(area,p);
-  function puedeArrastrar(p){ return !!textoEn(p) || sobreFoto(p); }
+  function puedeArrastrar(p){ return !!textoEn(p) || !!fotos.en(p) || sobreFoto(p); }
   function onPointerDown(p){
     const t=textoEn(p);
     if(t){ const d=despDe(t); arrastre={texto:t, dx:p.x-d.dx, dy:p.y-d.dy}; }
+    else if(fotos.tomar(p)) arrastre={foto:true};
     else if(sobreFoto(p)) arrastre={e:iniciarEncuadre(p,geoFoto,'lFotoX','lFotoY')};
     else return false;
     return true;
@@ -310,13 +315,16 @@ var Largos = (() => {
   function onPointerMove(p){
     if(!arrastre) return;
     if(arrastre.e){ moverEncuadre(arrastre.e,p); return; }
+    if(arrastre.foto){ fotos.mover(p); return; }
     // el texto no puede salir del lienzo
     const b=cajas[arrastre.texto], d=despDe(arrastre.texto), lim=(v,a,z)=>Math.max(a,Math.min(z,v));
     if(!b) return;
     d.dx=lim(p.x-arrastre.dx, -b.x, W-b.x-b.w);
     d.dy=lim(p.y-arrastre.dy, -b.y, H-b.y-b.h);
   }
-  function onPointerUp(){ arrastre=null; }
+  function onPointerUp(){ arrastre=null; fotos.soltar(); }
+  // Ctrl + rueda: escala la foto bajo el cursor
+  function onWheel(p,deltaY){ return fotos.escalar(p,deltaY); }
 
   function centrarFoto(){ $('lFotoX').value=50; $('lFotoY').value=50; }
   function ponerFoto(img){ foto=img; geoFoto=null; centrarFoto(); }
@@ -332,7 +340,7 @@ var Largos = (() => {
 
   return {
     render, nombreArchivo: ()=>'miniatura-'+$('lPlantilla').value+'.png',
-    puedeArrastrar, onPointerDown, onPointerMove, onPointerUp,
+    puedeArrastrar, onPointerDown, onPointerMove, onPointerUp, onWheel, fotos,
     ponerFoto, ajustar, insignia, etiquetaPodcast,
     cajaTexto: k=>cajas[k] && {...cajas[k], x:cajas[k].x+despDe(k).dx, y:cajas[k].y+despDe(k).dy}
   };

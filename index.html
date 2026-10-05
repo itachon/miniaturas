@@ -20,6 +20,7 @@
       <button class="subtab activa" data-grupo="texto" type="button">Texto</button>
       <button class="subtab" data-grupo="fondo" type="button">Fondo</button>
       <button class="subtab" data-grupo="icono" type="button">Ícono</button>
+      <button class="subtab" data-grupo="fotos" type="button">Fotos</button>
       <button class="subtab" data-grupo="efectos" type="button">Efectos</button>
     </nav>
 
@@ -84,6 +85,14 @@ MUNDO</textarea>
       </div>
     </section>
 
+    <section class="grupo" data-grupo="fotos" hidden>
+      <label>Agregar fotos (puedes elegir varias)
+        <input type="file" id="cFotos" accept="image/*" multiple>
+      </label>
+      <div class="fotos-lista" id="cFotosLista" hidden></div>
+      <p class="hint">Arrastra cada foto para moverla. <b>Ctrl + rueda del mouse</b> sobre una foto la agranda o achica.</p>
+    </section>
+
     <section class="grupo" data-grupo="efectos" hidden>
       <label class="check"><input type="checkbox" id="efectos" checked> Mostrar efectos (partículas, bokeh, estrellas y destellos)</label>
       <div class="grupo-cuerpo" id="efectosAjustes">
@@ -144,13 +153,18 @@ EN TOKIO</textarea>
       <input type="text" id="lFecha" value="7 DÍAS">
     </label>
 
+    <label>Fotos extra (puedes elegir varias)
+      <input type="file" id="lFotos" accept="image/*" multiple>
+    </label>
+    <div class="fotos-lista" id="lFotosLista" hidden></div>
+
     <label>Dorado<input type="color" id="lGold" value="#f2c35b"></label>
 
     <div class="btns">
       <button class="ghost" id="lRand" type="button">🎲 Variar</button>
       <button class="primary" data-descargar type="button">⬇ Descargar PNG</button>
     </div>
-    <p class="hint">Arrastra el título y el subtítulo para moverlos, y la foto para encuadrarla. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
+    <p class="hint">Arrastra el título, el subtítulo y las fotos extra para moverlos, y la foto para encuadrarla. Ctrl + rueda del mouse sobre una foto extra la agranda o achica. Usa fotos horizontales de buena resolución (1280×720 o más).</p>
   </aside>
 
   <main class="stage">
